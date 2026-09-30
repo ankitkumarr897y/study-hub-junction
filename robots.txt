@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://your-deployed-site.example/sitemap.xml

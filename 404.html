@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+  <body>
+    <p>Opening your Study Hub Junction page…</p>
+    <script>
+      const known = new Set(["class-9", "class-10", "class-11", "class-12", "jee-main", "jee-advanced", "neet", "ssc", "search", "admin", "about", "contact", "privacy-policy", "terms", "disclaimer", "404"]);
+      const pieces = location.pathname.split("/").filter(Boolean);
+      const repositoryBase = "/StudyHubJunction";
+      const base = pieces[0] === repositoryBase.slice(1) ? repositoryBase : "";
+      const route = base ? location.pathname.slice(base.length) || "/" : location.pathname;
+      location.replace(`${base}/?__route=${encodeURIComponent(route)}${location.search ? `&${new URLSearchParams(location.search)}` : ""}`);
+    </script>
+  </body>
+</html>

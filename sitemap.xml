@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://your-deployed-site.example/</loc></url>
+  <url><loc>https://your-deployed-site.example/class-9</loc></url>
+  <url><loc>https://your-deployed-site.example/class-10</loc></url>
+  <url><loc>https://your-deployed-site.example/class-11</loc></url>
+  <url><loc>https://your-deployed-site.example/class-12</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-main</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-advanced</loc></url>
+  <url><loc>https://your-deployed-site.example/neet</loc></url>
+  <url><loc>https://your-deployed-site.example/ssc</loc></url>
+  <url><loc>https://your-deployed-site.example/neet/pyqs/2025/biology</loc></url>
+  <url><loc>https://your-deployed-site.example/neet/pyqs/2025/physics</loc></url>
+  <url><loc>https://your-deployed-site.example/neet/pyqs/2025/chemistry</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-main/pyqs/2025/physics</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-main/pyqs/2025/chemistry</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-main/pyqs/2025/mathematics</loc></url>
+  <url><loc>https://your-deployed-site.example/jee-main/notes/physics</loc></url>
+  <url><loc>https://your-deployed-site.example/class-10/maths/chapter-1</loc></url>
+  <url><loc>https://your-deployed-site.example/class-12/notes/chemistry</loc></url>
+  <url><loc>https://your-deployed-site.example/ssc/pyqs/2025/general-awareness</loc></url>
+  <url><loc>https://your-deployed-site.example/about</loc></url>
+  <url><loc>https://your-deployed-site.example/contact</loc></url>
+  <url><loc>https://your-deployed-site.example/privacy-policy</loc></url>
+  <url><loc>https://your-deployed-site.example/terms</loc></url>
+  <url><loc>https://your-deployed-site.example/disclaimer</loc></url>
+</urlset>

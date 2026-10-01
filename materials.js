@@ -9,6 +9,14 @@ export const categories = [
   { slug: "ssc", title: "SSC", description: "Find study notes and previous year practice for SSC exams.", icon: "◎", color: "amber", kind: "Competitive exam" }
 ];
 
+export const boards = [
+  { slug: "cbse", name: "CBSE", description: "Central Board of Secondary Education" },
+  { slug: "icse", name: "ICSE", description: "Council for the Indian School Certificate Examinations" },
+  { slug: "jac", name: "JAC", description: "Jharkhand Academic Council" },
+  { slug: "up-board", name: "UP Board", description: "Uttar Pradesh Board" },
+  { slug: "bihar-board", name: "Bihar Board", description: "Bihar School Examination Board" }
+];
+
 export const demoMaterials = [
   { id: "demo-neet-biology-2025", category_slug: "neet", type: "pyqs", year: 2025, subject_slug: "biology", subject_name: "Biology", chapter_slug: null, title: "NEET Biology Previous Year Questions 2025", description: "A sample listing for NEET Biology previous year questions. Add a PDF you have permission to distribute from the admin dashboard.", tags: ["NEET", "Biology", "PYQ", "2025"], seo_title: "NEET Biology PYQs 2025 PDF | Study Hub Junction", seo_description: "Browse NEET Biology previous year questions for 2025 on Study Hub Junction.", file_url: "", thumbnail_url: "", license_status: "not_verified", license_note: "Demo listing. Verify redistribution rights before publishing.", is_published: true },
   { id: "demo-neet-physics-2025", category_slug: "neet", type: "pyqs", year: 2025, subject_slug: "physics", subject_name: "Physics", chapter_slug: null, title: "NEET Physics Previous Year Questions 2025", description: "A sample listing for NEET Physics question practice. This demo listing does not include a PDF.", tags: ["NEET", "Physics", "PYQ", "2025"], seo_title: "NEET Physics PYQs 2025 | Study Hub Junction", seo_description: "Browse NEET Physics previous year questions for 2025.", file_url: "", thumbnail_url: "", license_status: "not_verified", license_note: "Demo listing. Verify redistribution rights before publishing.", is_published: true },
@@ -25,13 +33,14 @@ export const demoMaterials = [
 export function materialPath(material) {
   const category = material.category_slug;
   const subject = material.subject_slug || "general";
+  const boardPrefix = material.board_slug ? `/${material.board_slug}` : "";
   if (material.type === "chapter" && material.chapter_slug) {
-    return `/${category}/${subject}/${material.chapter_slug}`;
+    return `${boardPrefix}/${category}/${subject}/${material.chapter_slug}`;
   }
   if (material.type === "pyqs") {
-    return `/${category}/pyqs/${material.year || "all-years"}${subject ? `/${subject}` : ""}`;
+    return `${boardPrefix}/${category}/pyqs/${material.year || "all-years"}${subject ? `/${subject}` : ""}`;
   }
-  return `/${category}/${material.type || "notes"}/${subject}`;
+  return `${boardPrefix}/${category}/${material.type || "notes"}/${subject}`;
 }
 
 export function makeSlug(value) {

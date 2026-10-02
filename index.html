@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f7f9ff">
+    <meta name="description" content="Find class notes, exam preparation resources and previous year questions on Study Hub Junction.">
+    <meta name="google-site-verification" content="9OMlhvTOkKKcQzEDEyai8x-kosGaONepYuMpAsrcFt4">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8672957876641344"
+     crossorigin="anonymous"></script>
+    <script>
+      const repositoryBase = "/StudyHubJunction";
+      const basePath = location.pathname === repositoryBase || location.pathname.startsWith(`${repositoryBase}/`)
+        ? `${repositoryBase}/`
+        : "/";
+      const baseElement = document.createElement("base");
+      baseElement.href = basePath;
+      document.head.append(baseElement);
+    </script>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Study Hub Junction">
+    <meta property="og:title" content="Study Hub Junction — learn with confidence">
+    <meta property="og:description" content="Find class notes, exam preparation resources and previous year questions.">
+    <meta property="og:image" content="./assets/study-hub-logo.jpg">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Study Hub Junction — learn with confidence">
+    <link rel="icon" type="image/jpeg" href="./assets/study-hub-logo.jpg">
+    <link rel="canonical" href="">
+    <link rel="stylesheet" href="./styles.css">
+    <title>Study Hub Junction — learn with confidence</title>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div id="app">
+      <header class="site-header">
+        <div class="header-inner">
+          <a class="brand" href="/" data-link aria-label="Study Hub Junction home">
+            <img src="./assets/study-hub-logo.jpg" width="48" height="48" alt="">
+            <span class="brand-name">study hub <b>junction</b></span>
+          </a>
+          <button class="menu-toggle icon-button" type="button" aria-label="Open navigation" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
+          <nav class="main-nav" aria-label="Main navigation">
+            <a href="/class-9" data-link data-nav-key="classes">Classes</a>
+            <a href="/boards" data-link data-nav-key="boards">Boards</a>
+            <a href="/jee-main" data-link data-nav-key="explore">JEE</a>
+            <a href="/neet" data-link data-nav-key="explore">NEET</a>
+            <a href="/ssc" data-link data-nav-key="explore">SSC</a>
+            <a class="nav-telegram" href="#" data-telegram-link target="_blank" rel="noopener noreferrer">Join Telegram <span aria-hidden="true">↗</span></a>
+          </nav>
+        </div>
+      </header>
+      <main id="main" tabindex="-1"></main>
+      <footer id="site-footer"></footer>
+      <nav class="mobile-bar" aria-label="Quick navigation">
+        <a href="/" data-link data-nav-key="home" aria-label="Home"><span aria-hidden="true">⌂</span><small>Home</small></a>
+        <a href="/search" data-link data-nav-key="search" aria-label="Search"><span aria-hidden="true">⌕</span><small>Search</small></a>
+        <a href="/class-9" data-link data-nav-key="explore" aria-label="Classes and exams"><span aria-hidden="true">▤</span><small>Explore</small></a>
+        <a href="/boards" data-link data-nav-key="boards" aria-label="Boards"><span aria-hidden="true">🏫</span><small>Boards</small></a>
+      </nav>
+      <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1262,11 +1262,16 @@ async function signIn(form) {
   if (config.adminEmail && email.toLowerCase() !== config.adminEmail.toLowerCase()) {
     throw new Error("This email does not match the configured admin email.");
   }
-  const response = await fetch(`${config.supabaseUrl.replace(/\/+$/, "")}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: config.supabaseAnonKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
-  });
+  let response;
+  try {
+    response = await fetch(`${config.supabaseUrl.replace(/\/+$/, "")}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { apikey: config.supabaseAnonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+  } catch (error) {
+    throw new Error(`Could not reach Supabase Auth (network/CORS error). Verify the deployed Supabase URL and publishable key in config.js, and confirm the Supabase project is active. Details: ${error.message}`);
+  }
   const data = await response.json();
   if (!response.ok) throw new Error(data.msg || data.message || "Sign-in failed. Check your email and password.");
   setSession({ ...data, expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600) });

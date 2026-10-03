@@ -12,7 +12,7 @@ export const categories = [
 export const boards = [
   { slug: "cbse", name: "CBSE", description: "Central Board of Secondary Education" },
   { slug: "icse", name: "ICSE", description: "Council for the Indian School Certificate Examinations" },
-  { slug: "jac", name: "JAC", description: "Jharkhand Academic Council" },
+  { slug: "jac-board", name: "JAC Board", description: "Jharkhand Academic Council" },
   { slug: "up-board", name: "UP Board", description: "Uttar Pradesh Board" },
   { slug: "bihar-board", name: "Bihar Board", description: "Bihar School Examination Board" }
 ];

@@ -58,7 +58,7 @@ Use the material slug as the path after your deployed site URL:
 | Telegram selection | Website path |
 |---|---|
 | Board → CBSE → Class 10 → PYQs → 2025 → Maths | `/cbse/class-10/pyqs/2025/maths` |
-| Board → JAC → Class 10 → Notes → Science | `/jac/class-10/notes/science` |
+| Board → JAC Board → Class 10 → Notes → Science | `/jac-board/class-10/notes/science` |
 | NEET → PYQs → 2025 → Biology | `/neet/pyqs/2025/biology` |
 | JEE Main → PYQs → 2025 → Physics | `/jee-main/pyqs/2025/physics` |
 | JEE Main → Notes → Physics | `/jee-main/notes/physics` |
@@ -116,13 +116,13 @@ Supabase's free-tier limits and availability can change. No service is guarantee
 |---|---|
 | `websiteName` / `WEBSITE_NAME` | Display name and page titles |
 | `websiteUrl` / `WEBSITE_URL` | Public site URL used for canonical metadata |
-| `telegramUrl` / `TELEGRAM_URL` | Configurable Join Telegram destination |
-| `adsenseId` / `GOOGLE_ADSENSE_ID` | Reserved public AdSense publisher ID |
+| `telegramUrl` / `TELEGRAM_URL` | Configurable Telegram bot destination |
+| `telegramChannelUrl` | Telegram channel destination |
 | `adminEmail` / `ADMIN_EMAIL` | Restricts the sign-in form to the intended email; RLS still enforces admin access |
 | `supabaseUrl`, `supabaseAnonKey` | Public Supabase endpoint and publishable/anon key |
 | `basePath` | Repository prefix for GitHub Pages project sites; blank for root/custom domains |
 
-Only non-secret values belong in `config.js`. The AdSense loader is included in `index.html`; the visible ad areas are still placeholders, so configure actual ad units in AdSense and review applicable privacy/consent rules before serving ads.
+Only non-secret values belong in `config.js`. The Google AdSense loader remains in `index.html`; the site does not show placeholder ad boxes.
 
 ## Copyright, files and publishing
 
@@ -138,4 +138,4 @@ The included listings are **sample placeholders**, not a collection of redistrib
 
 ## Pages and content
 
-Includes responsive home/category/material/search pages, breadcrumbs, related/previous/next materials, direct PDF upload to Supabase Storage or HTTPS link, PDF preview/view/download, Telegram links, ad placeholders, local privacy/terms/disclaimer/about/contact pages, a 404 fallback, and an error recovery page. The legal pages are starter templates; adapt them to your real contact details, data practices, local laws and any advertising provider before public launch.
+Includes responsive home/category/material/search pages, breadcrumbs, related/previous/next materials, direct PDF upload to Supabase Storage or HTTPS link, PDF preview/view/download, Telegram links, local privacy/terms/disclaimer/about/contact pages, a 404 fallback, and an error recovery page. The legal pages are starter templates; adapt them to your real contact details, data practices and local laws before public launch.

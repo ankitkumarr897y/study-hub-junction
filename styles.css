@@ -36,9 +36,13 @@ img { display: block; max-width: 100%; }
 .main-nav a:not(.nav-telegram) { position: relative; padding-block: 8px; }
 .main-nav a[aria-current="page"] { color: var(--blue); }
 .main-nav a[aria-current="page"]::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; border-radius: 2px; background: var(--blue); content: ""; }
-.main-nav .nav-telegram { padding: 10px 14px; color: white; border-radius: 10px; background: var(--blue); }
+.main-nav .nav-telegram { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; color: white; border-radius: 10px; background: linear-gradient(135deg,#2374e8,#1652bb); box-shadow: 0 5px 13px rgba(25,81,183,.17); transition: transform .16s, box-shadow .16s, filter .16s; }
+.main-nav .nav-telegram:hover { color: white; filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 8px 17px rgba(25,81,183,.23); }
+.main-nav .nav-telegram-channel { background: linear-gradient(135deg,#167f87,#12636c); box-shadow: 0 5px 13px rgba(18,99,108,.16); }
+.main-nav .nav-telegram-channel:hover { box-shadow: 0 8px 17px rgba(18,99,108,.22); }
+.main-nav .nav-telegram svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .nav-telegram:hover, .button-primary:hover { background: var(--blue-dark); }
-.nav-telegram span { padding-left: 4px; }
+.nav-telegram > span:last-child { margin-left: 1px; opacity: .8; }
 .menu-toggle { display: none; }
 .icon-button { border: 0; background: transparent; }
 main { min-height: calc(100vh - 180px); }
@@ -65,8 +69,17 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .button-primary { background: var(--blue); color: white; }
 .button-outline { border: 1px solid #dfe6f1; background: #fff; color: #334365; }
 .button-outline:hover { border-color: #b7c9ed; background: #f8faff; }
-.button-telegram { color: #fff; background: #178bc2; }
-.button-telegram:hover { background: #0879ad; }
+.button-download { display: inline-flex; flex: 1 1 185px; min-height: 52px; align-items: center; justify-content: space-between; gap: 11px; padding: 0 17px; border: 1px solid #1746ad; border-radius: 12px; color: #fff; background: linear-gradient(120deg,#3474f2 0%,#2256cf 55%,#1946ad 100%); box-shadow: 0 8px 18px rgba(35,83,191,.24), inset 0 1px 0 rgba(255,255,255,.22); font-size: 13px; letter-spacing: .1px; transition: box-shadow .18s, filter .18s, transform .18s; }
+.button-download:hover { filter: brightness(1.06); box-shadow: 0 11px 24px rgba(35,83,191,.32), inset 0 1px 0 rgba(255,255,255,.25); transform: translateY(-1px); }
+.button-download:focus-visible { outline: 3px solid rgba(52,116,242,.32); outline-offset: 3px; }
+.download-icon { display: grid; width: 31px; height: 31px; flex: 0 0 31px; place-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 9px; background: rgba(255,255,255,.15); }
+.download-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.download-arrow { margin-left: auto; font-size: 16px; opacity: .82; }
+.button-telegram { color: #fff; background: linear-gradient(135deg,#249ad2,#1479b7); box-shadow: 0 6px 15px rgba(20,121,183,.19); }
+.button-telegram:hover { color: #fff; background: linear-gradient(135deg,#1888c4,#086ba8); box-shadow: 0 8px 19px rgba(20,121,183,.27); transform: translateY(-1px); }
+.button-channel { color: #fff; background: linear-gradient(135deg,#188c91,#11666e); box-shadow: 0 6px 15px rgba(17,102,110,.17); }
+.button-channel:hover { color: #fff; background: linear-gradient(135deg,#117b81,#0b5961); box-shadow: 0 8px 19px rgba(17,102,110,.24); transform: translateY(-1px); }
+.button-telegram svg, .button-channel svg, .footer-telegram-links svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .button-danger { color: #a33636; background: #fff0f0; }
 .button:disabled { cursor: not-allowed; opacity: .58; }
 .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; min-height: 263px; }
@@ -76,7 +89,6 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .hero-badge strong { display: block; color: #1d49a8; font: 800 17px "Manrope", sans-serif; }
 .benefit-row { display: flex; flex-wrap: wrap; gap: 10px 19px; margin-top: 18px; color: #69758e; font-size: 11px; }
 .benefit-row span::before { content: "✓"; margin-right: 6px; color: #19a76c; font-weight: 700; }
-.ad-slot { display: flex; min-height: 76px; align-items: center; justify-content: center; margin: 24px auto; border: 1px dashed #d8dfeb; border-radius: 12px; color: #99a3b4; background: rgba(255,255,255,.62); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
 .home-content { padding: 25px 0 55px; }
 .section { margin: 29px 0 35px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
@@ -106,7 +118,9 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .material-card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; letter-spacing: -.2px; }
 .material-card p { flex: 1; margin: 0 0 12px; color: var(--muted); font-size: 11px; }
 .material-card-foot { display: flex; align-items: center; justify-content: space-between; color: #78839a; font-size: 10px; }
-.material-card-foot span:last-child { color: var(--blue); font-size: 17px; }
+.material-card-cta { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #e0e9fb; border-radius: 8px; color: #2456b4; background: #f5f8ff; font-size: 10px; font-weight: 700; transition: color .16s, border-color .16s, background .16s; }
+.material-card-cta span { font-size: 14px; line-height: 1; }
+.material-card:hover .material-card-cta { border-color: #c6d7f7; color: #1746a4; background: #edf3ff; }
 .feature-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .feature-item { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border-radius: 14px; background: white; border: 1px solid var(--line); }
 .feature-item-icon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 11px; background: #edf2ff; color: var(--blue); font-size: 17px; }
@@ -115,7 +129,11 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .telegram-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px; border-radius: 18px; color: #fff; background: linear-gradient(115deg,#183879,#2660c5); }
 .telegram-banner h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.5px; }
 .telegram-banner p { margin: 0; color: #e1e9ff; font-size: 12px; }
-.telegram-banner .button { flex: 0 0 auto; background: white; color: #2055ba; }
+.telegram-kicker { display: inline-block; margin-bottom: 5px; color: #bcd4ff; font-size: 9px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+.telegram-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
+.telegram-actions .button { min-height: 45px; flex: 0 0 auto; }
+.telegram-banner .button-telegram { background: linear-gradient(135deg,#249ad2,#1479b7); color: #fff; }
+.telegram-banner .button-channel { background: linear-gradient(135deg,#188c91,#11666e); color: #fff; }
 .page-content { padding: 24px 0 56px; }
 .breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 20px; color: #77839a; font-size: 11px; }
 .breadcrumbs .crumb-separator { color: #b4bdcb; }
@@ -134,6 +152,7 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .meta-item small { display: block; margin-bottom: 2px; color: #8b95a6; font-size: 9px; text-transform: uppercase; letter-spacing: .6px; }
 .meta-item strong { font-size: 12px; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 9px; margin: 17px 0 7px; }
+.material-actions { align-items: center; }
 .pdf-frame { width: 100%; min-height: 400px; margin-top: 17px; border: 1px solid var(--line); border-radius: 10px; background: #fafbfd; }
 .empty-preview { display: grid; min-height: 190px; place-items: center; padding: 20px; border: 1px dashed #d9e0ec; border-radius: 12px; text-align: center; color: #738098; background: #fafbfd; }
 .empty-preview strong { display: block; margin: 8px 0 2px; color: #45516a; }
@@ -179,6 +198,11 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .footer-brand { max-width: 260px; }
 .footer-brand .brand { margin-bottom: 9px; }
 .footer-brand p { color: var(--muted); font-size: 11px; }
+.footer-telegram-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+.footer-telegram-links a { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #dce7f3; border-radius: 9px; color: #2360a9; background: #f8fbff; font-size: 10px; font-weight: 700; transition: border-color .16s, background .16s, transform .16s; }
+.footer-telegram-links a:hover { transform: translateY(-1px); border-color: #bfd2e8; background: #eff7ff; }
+.footer-telegram-links a:last-child { color: #137078; }
+.footer-telegram-links svg { width: 15px; height: 15px; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 14px 21px; color: #68748b; font-size: 11px; }
 .footer-bottom { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; padding-top: 13px; border-top: 1px solid var(--line); color: #929caf; font-size: 10px; }
 .mobile-bar { display: none; }
@@ -210,7 +234,7 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
   .main-nav { position: absolute; top: 59px; right: 12px; left: 12px; display: none; align-items: stretch; gap: 0; padding: 7px; border: 1px solid var(--line); border-radius: 13px; background: white; box-shadow: var(--shadow); }
   .main-nav.open { display: grid; }
   .main-nav a { padding: 11px 12px; }
-  .main-nav .nav-telegram { margin-top: 4px; text-align: center; }
+  .main-nav .nav-telegram { justify-content: center; margin-top: 5px; text-align: center; }
   .container { width: min(100% - 28px, 1100px); }
   .home-hero { padding: 28px 0 23px; }
   .hero-layout { grid-template-columns: 1fr; gap: 11px; }
@@ -226,7 +250,8 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
   .hero-logo-card { width: 140px; border-radius: 22px; }
   .hero-badge { display: none; }
   .benefit-row { gap: 7px 12px; font-size: 10px; }
-  .ad-slot { min-height: 61px; margin: 16px auto; }
+  .material-actions .button-download { flex-basis: 100%; }
+  .material-actions .button-outline, .material-actions .button-telegram { flex: 1 1 135px; }
   .home-content { padding-top: 17px; padding-bottom: 34px; }
   .section { margin: 24px 0 28px; }
   .section-heading { margin-bottom: 12px; }
@@ -246,6 +271,8 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
   .feature-item { padding: 13px; }
   .telegram-banner { align-items: flex-start; flex-direction: column; padding: 18px; }
   .telegram-banner h2 { font-size: 18px; }
+  .telegram-actions { width: 100%; justify-content: stretch; }
+  .telegram-actions .button { flex: 1 1 145px; padding-inline: 12px; font-size: 11px; }
   .page-content { padding: 18px 0 34px; }
   .breadcrumbs { gap: 6px; margin-bottom: 15px; font-size: 10px; }
   .page-heading h1 { font-size: 27px; }

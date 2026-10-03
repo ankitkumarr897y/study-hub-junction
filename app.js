@@ -16,6 +16,7 @@ const materialColumns = "id,category_slug,board_slug,subject_slug,subject_name,c
 const main = document.querySelector("#main");
 const toastRegion = document.querySelector("#toast-region");
 const safeTelegramUrl = getSafeExternalUrl(config.telegramUrl) || "";
+const safeTelegramChannelUrl = getSafeExternalUrl(config.telegramChannelUrl) || "";
 const appBase = detectAppBase();
 let localMaterials = null;
 let currentRoute = "/";
@@ -33,6 +34,14 @@ function detectAppBase() {
   if (configuredBase && location.pathname.startsWith(`${configuredBase}/`)) return configuredBase;
   if (configuredBase && location.pathname === configuredBase) return configuredBase;
   return "";
+}
+
+function telegramIcon() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m21 3-7.1 18-3.7-7.2L3 10.1 21 3Zm-10.8 10.8L21 3" /></svg>`;
+}
+
+function channelIcon() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 13V9a2 2 0 0 1 2-2h2l9-4v16l-9-4H6a2 2 0 0 1-2-2Zm4-6v10m2 0 1.5 4H15l-2-5m8-8a4 4 0 0 1 0 8" /></svg>`;
 }
 
 async function uploadPdf(file, categorySlug) {
@@ -101,8 +110,15 @@ function setCategories(items) {
 }
 
 function setBoards(items) {
-  siteBoards = items;
-  boardBySlug = new Map(items.map((board) => [board.slug, board]));
+  const uniqueBoards = new Map();
+  for (const board of items) {
+    const normalized = board.slug === "jac" || board.slug === "jac-board"
+      ? { ...board, slug: "jac-board", name: "JAC Board", description: "Jharkhand Academic Council study material for Classes 9–12." }
+      : board;
+    uniqueBoards.set(normalized.slug, normalized);
+  }
+  siteBoards = [...uniqueBoards.values()];
+  boardBySlug = new Map(siteBoards.map((board) => [board.slug, board]));
 }
 
 function activeCategories() {
@@ -115,8 +131,9 @@ function activeBoards() {
 
 function parseBoardRoute(route) {
   const parts = route.split("?")[0].split("/").filter(Boolean);
-  if (!parts.length || !boardBySlug.has(parts[0])) return null;
-  return { board: boardBySlug.get(parts[0]), parts: parts.slice(1) };
+  const boardSlug = parts[0] === "jac" ? "jac-board" : parts[0];
+  if (!parts.length || !boardBySlug.has(boardSlug)) return null;
+  return { board: boardBySlug.get(boardSlug), parts: parts.slice(1) };
 }
 
 function loadDemoCategories() {
@@ -162,7 +179,9 @@ async function fetchCategoryPage(route, offset = 0) {
   const params = new URLSearchParams({
     select: materialColumns,
     category_slug: `eq.${categorySlug}`,
-    board_slug: boardRoute ? `eq.${boardRoute.board.slug}` : "is.null",
+    board_slug: boardRoute
+      ? (boardRoute.board.slug === "jac-board" ? "in.(jac-board,jac)" : `eq.${boardRoute.board.slug}`)
+      : "is.null",
     is_published: "eq.true",
     order: "updated_at.desc",
     limit: String(publicPageSize),
@@ -270,16 +289,24 @@ function routeFromLocation() {
   const params = new URLSearchParams(location.search);
   const restored = params.get("__route");
   if (restored) {
-    const clean = restored.startsWith("/") ? restored : `/${restored}`;
+    const clean = normalizeBoardRoute(restored.startsWith("/") ? restored : `/${restored}`);
     params.delete("__route");
     const suffix = params.toString();
-    history.replaceState({}, "", `${pathFor(clean)}${suffix ? `?${suffix}` : ""}`);
+    history.replaceState({}, "", `${pathFor(clean)}${suffix ? `?${suffix}` : ""}${location.hash}`);
     return clean;
   }
   let path = location.pathname;
   if (appBase && path.startsWith(appBase)) path = path.slice(appBase.length) || "/";
   if (path.length > 1) path = path.replace(/\/+$/, "");
-  return path || "/";
+  const canonicalPath = normalizeBoardRoute(path || "/");
+  if (canonicalPath !== path) history.replaceState({}, "", `${pathFor(canonicalPath)}${location.search}${location.hash}`);
+  return canonicalPath;
+}
+
+function normalizeBoardRoute(route) {
+  if (route === "/boards/jac") return "/boards/jac-board";
+  if (route === "/jac" || route.startsWith("/jac/")) return `/jac-board${route.slice(4)}`;
+  return route;
 }
 
 function escapeHtml(value = "") {
@@ -295,6 +322,18 @@ function getSafeExternalUrl(value) {
   } catch {
     return "";
   }
+}
+
+function getDownloadUrl(value, title) {
+  const safeUrl = getSafeExternalUrl(value);
+  if (!safeUrl) return "";
+  const downloadUrl = new URL(safeUrl);
+  const storageUrl = getSafeExternalUrl(config.supabaseUrl);
+  if (storageUrl && downloadUrl.origin === new URL(storageUrl).origin &&
+    downloadUrl.pathname.startsWith("/storage/v1/object/public/")) {
+    downloadUrl.searchParams.set("download", `${makeSlug(title) || "study-material"}.pdf`);
+  }
+  return downloadUrl.href;
 }
 
 function isSupabaseReady() {
@@ -505,7 +544,7 @@ function normalizeMaterial(item) {
   return {
     ...item,
     category_slug: item.category_slug || "neet",
-    board_slug: item.board_slug || null,
+    board_slug: item.board_slug === "jac" ? "jac-board" : item.board_slug || null,
     subject_slug: item.subject_slug || "general",
     subject_name: item.subject_name || item.subject_slug || "General",
     type: item.type || "notes",
@@ -526,7 +565,7 @@ function materialCard(item) {
     </div>
     <h3>${escapeHtml(item.title)}</h3>
     <p>${escapeHtml(item.description || "Open this study resource for details.")}</p>
-    <div class="material-card-foot"><span>${escapeHtml(kind)}${item.year ? ` · ${escapeHtml(item.year)}` : ""}</span><span aria-hidden="true">→</span></div>
+    <div class="material-card-foot"><span>${escapeHtml(kind)}${item.year ? ` · ${escapeHtml(item.year)}` : ""}</span><span class="material-card-cta">Open material <span aria-hidden="true">→</span></span></div>
   </a>`;
 }
 
@@ -551,7 +590,7 @@ function boardsPage(board = null) {
     return `<div class="container page-content">${breadcrumb([{ label: "School boards" }])}
       <div class="page-heading"><span class="eyebrow">Board-wise study</span><h1>Choose your board</h1><p>Select your school board first, then choose your class to find matching study materials.</p></div>
       <div class="category-grid">${activeBoards().map(boardCard).join("")}</div>
-      ${adSlot()}<section class="section"><p class="field-hint">More boards can be added as study materials become available.</p></section>
+      <section class="section"><p class="field-hint">More boards can be added as study materials become available.</p></section>
     </div>`;
   }
   const classes = activeCategories()
@@ -564,12 +603,7 @@ function boardsPage(board = null) {
       <h3>${escapeHtml(category.title)}</h3><p>Browse ${escapeHtml(category.title)} notes, PYQs and chapters for ${escapeHtml(board.name)}.</p>
       <span class="category-arrow" aria-hidden="true">Choose class →</span>
     </a>`).join("")}</div>
-    ${adSlot()}
   </div>`;
-}
-
-function adSlot(label = "Advertisement") {
-  return `<div class="ad-slot" aria-label="Advertisement placeholder">${escapeHtml(label)} · reserved space</div>`;
 }
 
 function sectionHeading(title, description, href, linkText = "View all") {
@@ -594,9 +628,8 @@ function homePage() {
     </div>
     <div class="hero-visual" aria-hidden="true"><div class="hero-logo-card"><img src="${pathFor("/assets/study-hub-logo.jpg")}" alt="" loading="eager"></div><div class="hero-badge"><strong>${activeCategories().length} learning paths</strong>one clear place to start</div></div>
   </div></section>
-  <div class="container">${adSlot()}</div>
   <div class="container home-content">
-    <section class="section">${sectionHeading("School boards", "Choose CBSE, ICSE, JAC or another board, then select your class.", "/boards", "Explore boards")}<div class="category-grid">${activeBoards().map(boardCard).join("")}</div></section>
+    <section class="section">${sectionHeading("School boards", "Choose CBSE, ICSE, JAC Board or another board, then select your class.", "/boards", "Explore boards")}<div class="category-grid">${activeBoards().map(boardCard).join("")}</div></section>
     <section class="section">${sectionHeading("Explore your path", "Choose a class or exam to see all its resources.", "/class-9")}<div class="category-grid">${activeCategories().map(categoryCard).join("")}</div></section>
     <section class="section">${sectionHeading("Picked for your next study session", "Useful resources first, with a fresh mix across subjects.", "/search")}<div class="material-grid">${recommended.map(materialCard).join("")}</div></section>
     <section class="section">${sectionHeading("Latest materials", "Newly added resources, ready for your next study session.", "/search")}<div class="material-grid">${recent.map(materialCard).join("")}</div></section>
@@ -607,7 +640,7 @@ function homePage() {
       <div class="feature-item"><span class="feature-item-icon">↗</span><div><h3>Open a direct link</h3><p>Share a permanent page from Telegram without extra steps.</p></div></div>
       <div class="feature-item"><span class="feature-item-icon">✓</span><div><h3>Materials with care</h3><p>Only publish files you have the right to share.</p></div></div>
     </div></section>
-    <section class="section"><div class="telegram-banner"><div><h2>Study together on Telegram</h2><p>Follow Study Hub Junction for updates and new learning resources.</p></div><a class="button" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Join Telegram ↗</a></div></section>
+    <section class="section"><div class="telegram-banner"><div><span class="telegram-kicker">Study Hub Junction on Telegram</span><h2>Study together on Telegram</h2><p>Get direct study links from the bot and follow the channel for new updates.</p></div><div class="telegram-actions"><a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join Telegram channel</span><span aria-hidden="true">↗</span></a>` : ""}</div></div></section>
   </div>`;
 }
 
@@ -645,6 +678,7 @@ function detailPage(item) {
   ];
   const canonicalPath = pathFor(materialPath(item));
   const shortDescription = item.description || `Study ${subject} with this ${category?.title || item.category_slug} resource.`;
+  const downloadUrl = fileUrl ? getDownloadUrl(fileUrl, item.title) : "";
   const statusNotice = item.license_status === "not_verified" ? `<div class="notice">This is a sample resource listing. A downloadable file is not available until the owner adds an authorised PDF.</div>` : "";
   const preview = fileUrl
     ? `<iframe class="pdf-frame" src="${escapeHtml(fileUrl)}#toolbar=1" title="Preview: ${escapeHtml(item.title)}" loading="lazy" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>`
@@ -657,15 +691,14 @@ function detailPage(item) {
   const next = position >= 0 && position < previousNext.length - 1 ? previousNext[position + 1] : null;
   return `<div class="container page-content">${breadcrumb(crumbs)}
     <div class="page-heading"><span class="eyebrow">${escapeHtml(category?.title || item.category_slug)}${item.year ? ` · ${escapeHtml(item.year)}` : ""}</span><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(shortDescription)}</p></div>
-    ${adSlot("Advertisement · material page")}
     <div class="material-detail-grid"><article class="detail-panel">
       <h2>About this study material</h2><p>${escapeHtml(shortDescription)}</p>
       ${statusNotice}
       <div class="meta-list">${board ? `<div class="meta-item"><small>Board</small><strong>${escapeHtml(board.name)}</strong></div>` : ""}<div class="meta-item"><small>Exam / class</small><strong>${escapeHtml(category?.title || item.category_slug)}</strong></div><div class="meta-item"><small>Subject</small><strong>${escapeHtml(subject)}</strong></div><div class="meta-item"><small>Material</small><strong>${escapeHtml(item.type === "pyqs" ? "Previous year questions" : item.type === "chapter" ? "Chapter material" : "Study notes")}</strong></div><div class="meta-item"><small>Year</small><strong>${escapeHtml(item.year || "All years")}</strong></div></div>
-      <div class="detail-actions">${fileUrl ? `<a class="button button-primary" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer">View material ↗</a><a class="button button-outline" href="${escapeHtml(fileUrl)}" download>Download material</a>` : `<button class="button button-primary" disabled title="The owner has not added an authorised file yet">PDF not available yet</button>`}<a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Join Telegram ↗</a></div>
+      <div class="detail-actions material-actions">${fileUrl ? `<a class="button button-download" href="${escapeHtml(downloadUrl)}"><span class="download-icon" aria-hidden="true"><svg viewBox="0 0 20 20" focusable="false"><path d="M10 2.75v9.1m0 0 3.4-3.4M10 11.85l-3.4-3.4M3.25 13.6v2.15c0 .83.67 1.5 1.5 1.5h10.5c.83 0 1.5-.67 1.5-1.5V13.6" /></svg></span><span>Download PDF</span><span class="download-arrow" aria-hidden="true">↓</span></a><a class="button button-outline" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer">View material ↗</a>` : `<button class="button button-primary" disabled title="The owner has not added an authorised file yet">PDF not available yet</button>`}<a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div>
       ${preview}
       <div class="detail-actions">${prev ? `<a class="button button-outline" href="${pathFor(materialPath(prev))}" data-link>← Previous</a>` : ""}${next ? `<a class="button button-outline" href="${pathFor(materialPath(next))}" data-link>Next →</a>` : ""}</div>
-    </article><aside><section class="side-panel"><h2>Related materials</h2>${related.length ? `<div class="related-list">${related.map((entry) => `<a class="related-item" href="${pathFor(materialPath(entry))}" data-link><strong>${escapeHtml(entry.title)}</strong><small>${escapeHtml(entry.subject_name || entry.subject_slug)}${entry.year ? ` · ${escapeHtml(entry.year)}` : ""}</small></a>`).join("")}</div>` : `<p>More resources will appear here as they are added.</p>`}</section>${adSlot("Advertisement · sidebar")}<section class="side-panel"><h2>Share this page</h2><p>This permanent address can be sent directly in your Telegram bot.</p><button class="button button-outline" type="button" data-copy-url>Copy page link</button></section></aside></div>
+    </article><aside><section class="side-panel"><h2>Related materials</h2>${related.length ? `<div class="related-list">${related.map((entry) => `<a class="related-item" href="${pathFor(materialPath(entry))}" data-link><strong>${escapeHtml(entry.title)}</strong><small>${escapeHtml(entry.subject_name || entry.subject_slug)}${entry.year ? ` · ${escapeHtml(entry.year)}` : ""}</small></a>`).join("")}</div>` : `<p>More resources will appear here as they are added.</p>`}</section><section class="side-panel"><h2>Share this page</h2><p>This permanent address can be sent directly in your Telegram bot.</p><button class="button button-outline" type="button" data-copy-url>Copy page link</button></section></aside></div>
   </div>`;
 }
 
@@ -708,7 +741,7 @@ function categoryPage(category, route) {
     <div class="page-heading"><span class="eyebrow">${escapeHtml(board ? `${board.name} · ${category.title}` : category.kind)}</span><h1>${board ? `${escapeHtml(board.name)} · ` : ""}${escapeHtml(category.title)} ${section ? `· ${escapeHtml(label)}` : "study material"}</h1><p>${escapeHtml(category.description)} Browse ${board ? `${escapeHtml(board.name)}-specific ` : ""}notes, PYQs and topic-wise resources. Every material has a direct link you can share from Telegram.</p></div>
     <div class="category-tabs"><a class="${!section ? "active" : ""}" href="${pathFor(routePrefix)}" data-link>All materials</a><a class="${section === "notes" ? "active" : ""}" href="${pathFor(`${routePrefix}/notes`)}" data-link>Notes</a><a class="${section === "pyqs" ? "active" : ""}" href="${pathFor(`${routePrefix}/pyqs`)}" data-link>Previous year questions</a>${category.kind === "Class" ? `<a href="${pathFor(`${routePrefix}/chapters`)}" data-link>Chapters</a>` : ""}</div>
     ${items.length ? `<div class="material-grid">${items.map(materialCard).join("")}</div>${categoryPageCache.get(route)?.hasMore ? `<div class="form-actions"><button class="button button-outline" type="button" data-load-more="${escapeHtml(route)}">Load more materials</button></div>` : ""}` : emptyState("No materials here yet", "We haven’t added a resource for this selection. Try another subject or browse all available categories.", board ? `/boards/${board.slug}` : `/${category.slug}`)}
-    ${adSlot()}<section class="section"><div class="telegram-banner"><div><h2>Get new resource updates</h2><p>Join the official Study Hub Junction Telegram bot.</p></div><a class="button" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Join Telegram ↗</a></div></section>
+    <section class="section"><div class="telegram-banner"><div><span class="telegram-kicker">Stay connected</span><h2>Get new resource updates</h2><p>Use the bot for materials and join the channel for updates.</p></div><div class="telegram-actions"><a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div></div></section>
   </div>`;
 }
 
@@ -727,7 +760,7 @@ function searchPage(query) {
     <form class="search-form" data-search-form role="search"><span class="search-icon" aria-hidden="true">⌕</span><input name="q" type="search" value="${escapeHtml(q)}" placeholder="Try “NEET Biology” or “Class 10 Maths”" aria-label="Search study material"><button class="button button-primary" type="submit">Search</button></form>
     ${!q ? `<div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths", "SSC PYQ"].map((term) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(term)}`)}" data-link>${escapeHtml(term)} <span aria-hidden="true">↗</span></a>`).join("")}</div>` : ""}
     <section class="section">${q ? `<div class="section-heading"><div><h2>${results.length ? `${results.length} ${results.length === 1 ? "result" : "results"}` : "No results found"}</h2><p>Showing matches for “${escapeHtml(q)}”</p></div></div>${results.length ? `<div class="material-grid">${results.map(materialCard).join("")}</div>` : emptyState("Try another search", "Check the spelling, use a shorter phrase, or browse by class or exam.", "/")}` : emptyState("What are you studying today?", "Enter an exam, class, subject or topic to find relevant study material.", "/")}
-    </section>${adSlot()}
+    </section>
   </div>`;
 }
 
@@ -740,12 +773,12 @@ const policyContent = {
   contact: {
     title: "Contact us",
     description: "Get in touch with Study Hub Junction.",
-    body: `<p>For questions, corrections, accessibility feedback or copyright concerns, contact the site owner.</p>${config.adminEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.adminEmail) ? `<p>Email: <a class="text-link" href="mailto:${escapeHtml(config.adminEmail)}">${escapeHtml(config.adminEmail)}</a></p>` : `<p>Configure a public contact email before publishing this page.</p>`}<p>Telegram: <a class="text-link" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Study Hub Junction ↗</a></p>`
+    body: `<p>For questions, corrections, accessibility feedback or copyright concerns, contact the site owner.</p>${config.adminEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.adminEmail) ? `<p>Email: <a class="text-link" href="mailto:${escapeHtml(config.adminEmail)}">${escapeHtml(config.adminEmail)}</a></p>` : `<p>Configure a public contact email before publishing this page.</p>`}<p>Telegram study bot: <a class="text-link" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Open Study Hub Junction bot ↗</a></p>${safeTelegramChannelUrl ? `<p>Telegram channel: <a class="text-link" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">Join Study Hub Junction channel ↗</a></p>` : ""}`
   },
   "privacy-policy": {
     title: "Privacy policy",
     description: "How this website handles information.",
-    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes. It does not use these features to track students across websites.</p><h2>Advertising</h2><p>Advertisement spaces are placeholders until the owner configures an advertising provider. Third-party advertising providers may use cookies under their own policies. A live site should publish an accurate, jurisdiction-appropriate privacy policy before enabling ads.</p><h2>Your choices</h2><p>You can clear site data in your browser settings. For privacy questions, contact the site owner using the configured contact details.</p>`
+    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes. It does not use these features to track students across websites.</p><h2>Advertising</h2><p>This site loads Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads, subject to their policies and applicable consent requirements. Learn more in <a class="text-link" href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google's advertising policy ↗</a>.</p><h2>Your choices</h2><p>You can clear site data in your browser settings. For privacy questions, contact the site owner using the configured contact details.</p>`
   },
   terms: {
     title: "Terms & conditions",
@@ -876,9 +909,10 @@ function canonicalUrl(route) {
 
 function pageData(route) {
   if (route === "/") return { html: homePage(), title: "Learn with confidence", description: "Find class notes, exam preparation resources and previous year questions.", route };
-  if (route === "/boards") return { html: boardsPage(), title: "Choose your school board", description: "Browse board-specific study materials for CBSE, ICSE, JAC, UP Board and Bihar Board.", route };
+  if (route === "/boards") return { html: boardsPage(), title: "Choose your school board", description: "Browse board-specific study materials for CBSE, ICSE, JAC Board, UP Board and Bihar Board.", route };
   if (route.startsWith("/boards/")) {
-    const slug = route.split("/").filter(Boolean)[1];
+    const requestedSlug = route.split("/").filter(Boolean)[1];
+    const slug = requestedSlug === "jac" ? "jac-board" : requestedSlug;
     const board = boardBySlug.get(slug);
     if (board) return { html: boardsPage(board), title: `${board.name} study materials`, description: `Choose a class to browse ${board.name} study resources.`, route };
   }
@@ -956,7 +990,7 @@ function pageData(route) {
 function renderFooter() {
   const footer = document.querySelector("#site-footer");
   footer.className = "site-footer";
-  footer.innerHTML = `<div class="container"><div class="footer-main"><div class="footer-brand"><a class="brand" href="${pathFor("/")}" data-link><img src="${pathFor("/assets/study-hub-logo.jpg")}" width="40" height="40" alt="" loading="lazy"><span class="brand-name">study hub <b>junction</b></span></a><p>Simple, organised study material for your next step.</p></div><nav class="footer-links" aria-label="Footer">${[["About us", "/about"], ["Privacy policy", "/privacy-policy"], ["Terms & conditions", "/terms"], ["Disclaimer", "/disclaimer"], ["Contact us", "/contact"]].map(([label, href]) => `<a href="${pathFor(href)}" data-link>${label}</a>`).join("")}</nav></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} ${escapeHtml(config.websiteName || "Study Hub Junction")}</span><span>Independent learning resource directory</span></div></div>`;
+  footer.innerHTML = `<div class="container"><div class="footer-main"><div class="footer-brand"><a class="brand" href="${pathFor("/")}" data-link><img src="${pathFor("/assets/study-hub-logo.jpg")}" width="40" height="40" alt="" loading="lazy"><span class="brand-name">study hub <b>junction</b></span></a><p>Simple, organised study material for your next step.</p><div class="footer-telegram-links"><a href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Study bot</span></a>${safeTelegramChannelUrl ? `<a href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span></a>` : ""}</div></div><nav class="footer-links" aria-label="Footer">${[["About us", "/about"], ["Privacy policy", "/privacy-policy"], ["Terms & conditions", "/terms"], ["Disclaimer", "/disclaimer"], ["Contact us", "/contact"]].map(([label, href]) => `<a href="${pathFor(href)}" data-link>${label}</a>`).join("")}</nav></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} ${escapeHtml(config.websiteName || "Study Hub Junction")}</span><span>Independent learning resource directory</span></div></div>`;
 }
 
 function applyBranding() {
@@ -1003,6 +1037,10 @@ function render() {
   const page = pageData(currentRoute);
   main.innerHTML = `${remoteError && currentRoute !== "/admin" ? `<div class="container page-content"><div class="error-banner" role="alert">${escapeHtml(remoteError)}</div></div>` : ""}${page.html}`;
   document.querySelectorAll("[data-telegram-link]").forEach((link) => { link.href = safeTelegramUrl; });
+  document.querySelectorAll("[data-telegram-channel-link]").forEach((link) => {
+    link.href = safeTelegramChannelUrl;
+    link.hidden = !safeTelegramChannelUrl;
+  });
   updateNavigationState(currentRoute);
   document.querySelector(".main-nav")?.classList.remove("open");
   document.querySelector(".menu-toggle")?.setAttribute("aria-expanded", "false");
@@ -1024,7 +1062,7 @@ function navigate(route, options = {}) {
   let pathname = url.pathname;
   if (appBase && pathname.startsWith(`${appBase}/`)) pathname = pathname.slice(appBase.length);
   else if (appBase && pathname === appBase) pathname = "/";
-  const nextRoute = `${pathname}${url.search}` || "/";
+  const nextRoute = `${normalizeBoardRoute(pathname)}${url.search}` || "/";
   if (options.replace) history.replaceState({}, "", pathFor(nextRoute));
   else history.pushState({}, "", pathFor(nextRoute));
   render();

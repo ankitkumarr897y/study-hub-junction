@@ -31,15 +31,23 @@ create table if not exists public.chapters (
     references public.subjects(category_slug, slug) on delete cascade
 );
 
+create table if not exists public.boards (
+  slug text primary key check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+  name text not null unique,
+  description text not null default '',
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.materials (
   id uuid primary key default gen_random_uuid(),
   category_slug text not null references public.categories(slug) on delete restrict,
+  board_slug text references public.boards(slug) on delete restrict,
   subject_slug text not null,
   subject_name text not null,
   chapter_slug text,
   type text not null check (type in ('notes', 'pyqs', 'chapter')),
   year integer check (year is null or year between 1900 and 2200),
-  slug text not null unique check (slug ~ '^[a-z0-9]+(/[a-z0-9]+(-[a-z0-9]+)*)*$'),
+  slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$'),
   title text not null check (length(trim(title)) between 1 and 180),
   description text not null check (length(trim(description)) between 1 and 2000),
   file_url text check (file_url is null or file_url ~ '^https://'),
@@ -50,15 +58,7 @@ create table if not exists public.materials (
   license_status text not null default 'not_verified'
     check (license_status in ('not_verified', 'original', 'licensed', 'public_domain')),
   license_note text,
-  search_document tsvector generated always as (
-    to_tsvector('english',
-      coalesce(title, '') || ' ' ||
-      coalesce(description, '') || ' ' ||
-      coalesce(subject_name, '') || ' ' ||
-      coalesce(category_slug, '') || ' ' ||
-      coalesce(array_to_string(tags, ' '), '')
-    )
-  ) stored,
+  search_document tsvector,
   is_published boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -73,19 +73,68 @@ create table if not exists public.materials (
   )
 );
 
-alter table public.materials add column if not exists search_document tsvector
-  generated always as (
-    to_tsvector('english',
-      coalesce(title, '') || ' ' ||
-      coalesce(description, '') || ' ' ||
-      coalesce(subject_name, '') || ' ' ||
-      coalesce(category_slug, '') || ' ' ||
-      coalesce(array_to_string(tags, ' '), '')
-    )
-  ) stored;
+-- Migrate an earlier generated-column version, if one was partially applied.
+do $$
+begin
+  if exists (
+    select 1
+    from pg_attribute
+    where attrelid = 'public.materials'::regclass
+      and attname = 'search_document'
+      and attgenerated <> ''
+      and not attisdropped
+  ) then
+    alter table public.materials drop column search_document;
+  end if;
+end;
+$$;
+
+alter table public.materials
+  add column if not exists search_document tsvector;
+alter table public.materials
+  add column if not exists board_slug text references public.boards(slug) on delete restrict;
+
+create or replace function public.set_material_search_document()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+begin
+  new.search_document := to_tsvector(
+    'english',
+    coalesce(new.title, '') || ' ' ||
+    coalesce(new.description, '') || ' ' ||
+    coalesce(new.subject_name, '') || ' ' ||
+    coalesce(new.category_slug, '') || ' ' ||
+    coalesce(new.board_slug, '') || ' ' ||
+    coalesce(array_to_string(new.tags, ' '), '')
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists materials_search_document on public.materials;
+create trigger materials_search_document
+before insert or update of title, description, subject_name, category_slug, board_slug, tags
+on public.materials
+for each row execute function public.set_material_search_document();
+
+update public.materials
+set search_document = to_tsvector(
+  'english',
+  coalesce(title, '') || ' ' ||
+  coalesce(description, '') || ' ' ||
+  coalesce(subject_name, '') || ' ' ||
+  coalesce(category_slug, '') || ' ' ||
+  coalesce(board_slug, '') || ' ' ||
+  coalesce(array_to_string(tags, ' '), '')
+)
+where search_document is null;
 
 create index if not exists materials_published_category_idx
   on public.materials (category_slug, is_published, updated_at desc);
+create index if not exists materials_published_board_category_idx
+  on public.materials (board_slug, category_slug, is_published, updated_at desc);
 create index if not exists materials_subject_year_idx
   on public.materials (category_slug, subject_slug, year);
 create index if not exists materials_published_search_idx
@@ -101,7 +150,7 @@ returns setof public.materials
 language sql
 stable
 security invoker
-set search_path = ''
+set search_path = pg_catalog, public
 as $$
   select material.*
   from public.materials as material
@@ -110,7 +159,7 @@ as $$
     and (
       material.search_document @@ plainto_tsquery('english', search_query)
       or lower(concat_ws(' ', material.title, material.description, material.subject_name,
-        material.category_slug, array_to_string(material.tags, ' ')))
+        material.category_slug, material.board_slug, array_to_string(material.tags, ' ')))
         like '%' || lower(trim(search_query)) || '%'
     )
   order by ts_rank(material.search_document, plainto_tsquery('english', search_query)) desc,
@@ -120,7 +169,7 @@ as $$
 $$;
 
 create or replace function public.set_material_updated_at()
-returns trigger language plpgsql set search_path = '' as $$
+returns trigger language plpgsql set search_path = pg_catalog, public as $$
 begin
   new.updated_at = now();
   return new;
@@ -132,13 +181,14 @@ create trigger materials_updated_at before update on public.materials
 for each row execute function public.set_material_updated_at();
 
 create or replace function public.is_site_admin()
-returns boolean language sql stable security invoker set search_path = '' as $$
+returns boolean language sql stable security invoker set search_path = pg_catalog, public, auth as $$
   select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
 $$;
 
 alter table public.categories enable row level security;
 alter table public.subjects enable row level security;
 alter table public.chapters enable row level security;
+alter table public.boards enable row level security;
 alter table public.materials enable row level security;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -178,8 +228,9 @@ create policy "Admins delete study material PDFs" on storage.objects
   using (bucket_id = 'study-materials' and public.is_site_admin());
 
 grant usage on schema public to anon, authenticated;
-grant select on public.categories, public.subjects, public.chapters to anon, authenticated;
+grant select on public.categories, public.subjects, public.chapters, public.boards to anon, authenticated;
 grant insert, update, delete on public.categories, public.subjects, public.chapters to authenticated;
+grant insert, update, delete on public.boards to authenticated;
 grant select on public.materials to anon, authenticated;
 grant insert, update, delete on public.materials to authenticated;
 grant execute on function public.search_materials(text, integer, integer) to anon, authenticated;
@@ -202,6 +253,12 @@ drop policy if exists "Admins manage chapters" on public.chapters;
 create policy "Admins manage chapters" on public.chapters for all to authenticated
   using (public.is_site_admin()) with check (public.is_site_admin());
 
+drop policy if exists "Anyone can read boards" on public.boards;
+create policy "Anyone can read boards" on public.boards for select to anon, authenticated using (true);
+drop policy if exists "Admins manage boards" on public.boards;
+create policy "Admins manage boards" on public.boards for all to authenticated
+  using (public.is_site_admin()) with check (public.is_site_admin());
+
 drop policy if exists "Anyone can read published materials" on public.materials;
 create policy "Anyone can read published materials" on public.materials for select to anon, authenticated
   using (is_published or public.is_site_admin());
@@ -219,6 +276,14 @@ insert into public.categories (slug, name, kind, description) values
   ('neet', 'NEET', 'Entrance exam', 'Prepare Biology, Physics and Chemistry in one organised place.'),
   ('ssc', 'SSC', 'Competitive exam', 'Find study notes and previous year practice for SSC exams.')
 on conflict (slug) do update set name = excluded.name, kind = excluded.kind, description = excluded.description;
+
+insert into public.boards (slug, name, description) values
+  ('cbse', 'CBSE', 'Central Board of Secondary Education study material for Classes 9–12.'),
+  ('icse', 'ICSE', 'Council for the Indian School Certificate Examinations study material for Classes 9–12.'),
+  ('jac-board', 'JAC Board', 'Jharkhand Academic Council study material for Classes 9–12.'),
+  ('up-board', 'UP Board', 'Uttar Pradesh Board study material for Classes 9–12.'),
+  ('bihar-board', 'Bihar Board', 'Bihar School Examination Board study material for Classes 9–12.')
+on conflict (slug) do update set name = excluded.name, description = excluded.description;
 
 insert into public.subjects (category_slug, slug, name) values
   ('class-9', 'maths', 'Maths'), ('class-9', 'science', 'Science'), ('class-9', 'english', 'English'),

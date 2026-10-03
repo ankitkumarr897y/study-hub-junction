@@ -10,6 +10,6 @@ window.STUDY_HUB_CONFIG = {
   telegramUrl: "https://t.me/Study_hub_junction_bot",
   telegramChannelUrl: "https://t.me/pickzenloots",
   adminEmail: "ankitji933436@gmail.com",
-  supabaseUrl: "https://mxpabpkkffgoejkncapk.supabase.co",
+  supabaseUrl: "https://supabase.com/dashboard/project/mxpabpkkffgoejkncapk",
   supabaseAnonKey: "sb_publishable_oFzszetP3OkZzOV4Glf2ug_Dns2NWiV"
 };

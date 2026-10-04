@@ -46,6 +46,10 @@ function channelIcon() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 13V9a2 2 0 0 1 2-2h2l9-4v16l-9-4H6a2 2 0 0 1-2-2Zm4-6v10m2 0 1.5 4H15l-2-5m8-8a4 4 0 0 1 0 8" /></svg>`;
 }
 
+function brandMark() {
+  return `<svg viewBox="0 0 128 128" aria-hidden="true" focusable="false"><path d="M20 49 64 25l44 24-44 23z" fill="#10214a"/><path d="M42 62v13c12 10 32 10 44 0V62L64 74z" fill="#215bd5"/><path d="M106 50v27" stroke="#e9a32b" stroke-width="5" stroke-linecap="round"/><circle cx="106" cy="82" r="5" fill="#e9a32b"/><path d="M17 88c16-8 31-7 47 3 16-10 31-11 47-3v20c-16-7-31-6-47 4-16-10-31-11-47-4z" fill="#fff" stroke="#dce6f7" stroke-width="3" stroke-linejoin="round"/><path d="M64 91v24" stroke="#215bd5" stroke-width="3"/><path d="M25 94c11-4 21-2 32 4m46-4c-11-4-21-2-32 4" fill="none" stroke="#17a878" stroke-width="5" stroke-linecap="round"/></svg>`;
+}
+
 async function uploadPdf(file, categorySlug) {
   if (!isSupabaseReady() || !adminUser) throw new Error("Sign in with a configured Supabase admin account to upload PDF files.");
   if (!(file instanceof File) || !file.size) throw new Error("Choose a PDF file to upload.");
@@ -741,7 +745,7 @@ function homePage() {
       <div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths", "SSC PYQ"].map((query) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(query)}`)}" data-link>${escapeHtml(query)} <span aria-hidden="true">↗</span></a>`).join("")}</div>
       <div class="benefit-row"><span>Quick subject-wise search</span><span>Direct links to every resource</span></div>
     </div>
-    <div class="hero-visual" aria-hidden="true"><div class="hero-logo-card"><img src="${pathFor("/assets/study-hub-logo.jpg")}" alt="" loading="eager"></div><div class="hero-badge"><strong>${activeCategories().length} learning paths</strong>one clear place to start</div></div>
+    <div class="hero-visual" aria-hidden="true"><div class="hero-logo-card">${brandMark()}</div><div class="hero-badge"><strong>${activeCategories().length} learning paths</strong>one clear place to start</div></div>
   </div></section>
   <div class="container home-content">
     <section class="section">${sectionHeading("School boards", "Choose CBSE, ICSE, JAC Board or another board, then select your class.", "/boards", "Explore boards")}<div class="category-grid">${activeBoards().map(boardCard).join("")}</div></section>
@@ -1118,7 +1122,7 @@ function pageData(route) {
 function renderFooter() {
   const footer = document.querySelector("#site-footer");
   footer.className = "site-footer";
-  footer.innerHTML = `<div class="container"><div class="footer-main"><div class="footer-brand"><a class="brand" href="${pathFor("/")}" data-link><img src="${pathFor("/assets/study-hub-logo.jpg")}" width="40" height="40" alt="" loading="lazy"><span class="brand-name">study hub <b>junction</b></span></a><p>Simple, organised study material for your next step.</p><div class="footer-telegram-links"><a href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Study bot</span></a>${safeTelegramChannelUrl ? `<a href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span></a>` : ""}</div></div><nav class="footer-links" aria-label="Footer">${[["About us", "/about"], ["Privacy policy", "/privacy-policy"], ["Terms & conditions", "/terms"], ["Disclaimer", "/disclaimer"], ["Contact us", "/contact"]].map(([label, href]) => `<a href="${pathFor(href)}" data-link>${label}</a>`).join("")}</nav></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} ${escapeHtml(config.websiteName || "Study Hub Junction")}</span><span>Independent learning resource directory</span></div></div>`;
+  footer.innerHTML = `<div class="container"><div class="footer-main"><div class="footer-brand"><a class="brand" href="${pathFor("/")}" data-link><span class="brand-mark" aria-hidden="true">${brandMark()}</span><span class="brand-name">study hub <b>junction</b></span></a><p>Simple, organised study material for your next step.</p><div class="footer-telegram-links"><a href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Study bot</span></a>${safeTelegramChannelUrl ? `<a href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span></a>` : ""}</div></div><nav class="footer-links" aria-label="Footer">${[["About us", "/about"], ["Privacy policy", "/privacy-policy"], ["Terms & conditions", "/terms"], ["Disclaimer", "/disclaimer"], ["Contact us", "/contact"]].map(([label, href]) => `<a href="${pathFor(href)}" data-link>${label}</a>`).join("")}</nav></div><div class="footer-bottom"><span>© ${new Date().getFullYear()} ${escapeHtml(config.websiteName || "Study Hub Junction")}</span><span>Independent learning resource directory</span></div></div>`;
 }
 
 function applyBranding() {
@@ -1368,19 +1372,6 @@ async function checkAdminUser() {
   if (!adminUser) {
     setSession(null);
     remoteError = "This account is not authorised as a site administrator.";
-  }
-}
-
-async function loadRemotePublicMaterials() {
-  if (!isSupabaseReady()) return;
-  try {
-    const params = new URLSearchParams({ select: materialColumns, is_published: "eq.true", order: "updated_at.desc", limit: String(publicPageSize) });
-    const rows = await supabaseRequest(`materials?${params}`);
-    localMaterials = rows.map(normalizeMaterial);
-    remoteError = "";
-  } catch (error) {
-    remoteError = databaseErrorMessage(error, "load live study materials");
-    console.error(remoteError, error);
   }
 }
 
@@ -1726,44 +1717,74 @@ window.addEventListener("unhandledrejection", (event) => {
   notify("Something went wrong. Please try again.", true);
 });
 
-async function start() {
-  if (isSupabaseReady()) {
-    localMaterials = [];
-    try { await checkAdminUser(); }
-    catch (error) {
-      remoteError = `Could not verify admin sign-in: ${error.message}`;
-      console.error(remoteError, error);
-    }
-    try {
-      const remoteCategories = await supabaseRequest("categories?select=slug,name,kind,description&order=name.asc");
-      if (remoteCategories.length) {
-        setCategories(remoteCategories.map((category) => ({
-          ...category, title: category.name, icon: category.kind === "Class" ? "▤" : "◈", color: "blue"
-        })));
-      }
-    } catch (error) {
-      remoteError = `Could not load live categories: ${error.message}`;
-      console.error(remoteError, error);
-    }
-    try {
-      const remoteBoards = await supabaseRequest("boards?select=slug,name,description&order=name.asc");
-      if (remoteBoards.length) setBoards(remoteBoards);
-    } catch (error) {
-      remoteError = databaseErrorMessage(error, "load school boards");
-      console.error(remoteError, error);
-    }
-    await loadRemotePublicMaterials();
-    if (currentRoute === "/admin" || routeFromLocation() === "/admin") {
-      if (adminUser) {
-        try { adminMaterials = await loadAdminMaterials(); adminMaterialsLoaded = true; }
-        catch (error) { remoteError = `Could not load admin materials: ${error.message}`; }
-      }
+async function hydrateRemoteSite() {
+  const materialsParams = new URLSearchParams({
+    select: materialColumns,
+    is_published: "eq.true",
+    order: "updated_at.desc",
+    limit: String(publicPageSize)
+  });
+  const results = await Promise.allSettled([
+    checkAdminUser(),
+    supabaseRequest("categories?select=slug,name,kind,description&order=name.asc"),
+    supabaseRequest("boards?select=slug,name,description&order=name.asc"),
+    supabaseRequest(`materials?${materialsParams}`)
+  ]);
+  const errors = [];
+  if (results[0].status === "rejected") {
+    const message = `Could not verify admin sign-in: ${results[0].reason.message}`;
+    console.error(message, results[0].reason);
+    errors.push(message);
+  }
+  if (results[1].status === "fulfilled") {
+    if (results[1].value.length) {
+      setCategories(results[1].value.map((category) => ({
+        ...category, title: category.name, icon: category.kind === "Class" ? "▤" : "◈", color: "blue"
+      })));
     }
   } else {
-    loadDemoCategories();
-    loadDemoBoards();
-    adminMaterials = [...demoStore()];
+    const message = `Could not load live categories: ${results[1].reason.message}`;
+    console.error(message, results[1].reason);
+    errors.push(message);
   }
+  if (results[2].status === "fulfilled") {
+    if (results[2].value.length) setBoards(results[2].value);
+  } else {
+    const message = databaseErrorMessage(results[2].reason, "load school boards");
+    console.error(message, results[2].reason);
+    errors.push(message);
+  }
+  if (results[3].status === "fulfilled") {
+    localMaterials = results[3].value.map(normalizeMaterial);
+  } else {
+    const message = databaseErrorMessage(results[3].reason, "load live study materials");
+    console.error(message, results[3].reason);
+    errors.push(message);
+  }
+  if (routeFromLocation() === "/admin" && adminUser) {
+    try {
+      adminMaterials = await loadAdminMaterials();
+      adminMaterialsLoaded = true;
+    } catch (error) {
+      const message = `Could not load admin materials: ${error.message}`;
+      console.error(message, error);
+      errors.push(message);
+    }
+  }
+  remoteError = errors.join(" ");
+  render();
+}
+
+function start() {
+  if (isSupabaseReady()) {
+    localMaterials = [];
+    render();
+    void hydrateRemoteSite();
+    return;
+  }
+  loadDemoCategories();
+  loadDemoBoards();
+  adminMaterials = [...demoStore()];
   render();
 }
 

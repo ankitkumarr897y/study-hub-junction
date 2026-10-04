@@ -28,7 +28,8 @@ img { display: block; max-width: 100%; }
 .site-header { position: sticky; z-index: 20; top: 0; background: rgba(255,255,255,.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(16px); }
 .header-inner { width: min(1160px, calc(100% - 36px)); height: 68px; margin: auto; display: flex; align-items: center; justify-content: space-between; }
 .brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
-.brand img { width: 43px; height: 43px; object-fit: contain; border-radius: 50%; }
+.brand-mark { width: 43px; height: 43px; flex: 0 0 auto; display: grid; place-items: center; }
+.brand-mark svg { display: block; width: 100%; height: 100%; }
 .brand-name { color: #10214a; font: 800 16px/1 "Manrope", sans-serif; letter-spacing: -.55px; white-space: nowrap; }
 .brand-name b { display: block; color: var(--blue); font-size: 11px; letter-spacing: 3.9px; text-transform: lowercase; margin-top: 3px; }
 .main-nav { display: flex; align-items: center; gap: 29px; font-size: 13px; font-weight: 600; color: #55617b; }
@@ -84,7 +85,7 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .button:disabled { cursor: not-allowed; opacity: .58; }
 .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; min-height: 263px; }
 .hero-logo-card { position: relative; width: min(270px, 70%); aspect-ratio: 1; display: grid; place-items: center; border: 1px solid #e4ebfa; border-radius: 32px; background: white; box-shadow: 0 22px 52px rgba(45,78,150,.12); transform: rotate(2deg); }
-.hero-logo-card img { width: 91%; height: 91%; object-fit: contain; }
+.hero-logo-card svg { width: 76%; height: 76%; }
 .hero-badge { position: absolute; z-index: 1; right: 0; bottom: 32px; padding: 11px 15px; border: 1px solid #e7ebf6; border-radius: 13px; background: #fff; box-shadow: var(--shadow); color: #52607a; font-size: 11px; font-weight: 700; }
 .hero-badge strong { display: block; color: #1d49a8; font: 800 17px "Manrope", sans-serif; }
 .benefit-row { display: flex; flex-wrap: wrap; gap: 10px 19px; margin-top: 18px; color: #69758e; font-size: 11px; }
@@ -245,7 +246,7 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 @media (max-width: 620px) {
   body { font-size: 14px; }
   .header-inner { width: min(100% - 28px, 1100px); height: 60px; }
-  .brand img { width: 39px; height: 39px; }
+  .brand-mark { width: 39px; height: 39px; }
   .brand-name { font-size: 15px; }
   .menu-toggle { width: 39px; height: 39px; display: grid; align-content: center; justify-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 10px; }
   .menu-toggle span { width: 16px; height: 2px; border-radius: 2px; background: #334365; }

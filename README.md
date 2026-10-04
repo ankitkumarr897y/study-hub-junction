@@ -49,7 +49,7 @@ Either double-click `RUN-LOCAL.bat`, or:
 3. The public site has no Admin link. `/admin` requires the configured Supabase connection and an authenticated administrator; admin editing is deliberately disabled in local demo mode. The homepage has suggested searches; search ranks close matches by title, subject, class/exam, board, year and material type.
 4. Stop the preview with **Ctrl+C** in its PowerShell window.
 
-The supplied logo is included as a 512px optimized JPEG in `assets/study-hub-logo.jpg` (about 70 KB). No Node.js, npm, Python, package install or payment is needed to preview the demo.
+The supplied logo image is included as a 512px optimized JPEG in `assets/study-hub-logo.jpg` (about 70 KB) for social previews. On-screen branding uses an inline vector mark, so the header and homepage logo still appear if an image asset is unavailable. When Supabase is configured, the page shell renders immediately and categories, boards, materials and admin status load in parallel. No Node.js, npm, Python, package install or payment is needed to preview the demo.
 
 ## Direct links for the Telegram bot
 

@@ -28,6 +28,8 @@ let adminMaterialsLoaded = false;
 const categoryPageCache = new Map();
 const searchResultCache = new Map();
 const routeLoadsInFlight = new Set();
+const feedbackCache = new Map();
+const feedbackLoadsInFlight = new Set();
 
 function detectAppBase() {
   const configuredBase = typeof config.basePath === "string" ? config.basePath.replace(/\/+$/, "") : "";
@@ -357,6 +359,119 @@ function notify(message, isError = false) {
   toastTimer = setTimeout(() => toast.remove(), 4200);
 }
 
+async function loadMaterialFeedback(materialId, refresh = false) {
+  const panel = document.querySelector(`[data-feedback-material="${CSS.escape(materialId)}"]`);
+  if (!panel || !isSupabaseReady()) return;
+  if (!refresh && feedbackCache.has(materialId)) {
+    renderMaterialFeedback(panel, feedbackCache.get(materialId));
+    return;
+  }
+  if (feedbackLoadsInFlight.has(materialId)) return;
+  feedbackLoadsInFlight.add(materialId);
+  const status = panel.querySelector("[data-feedback-status]");
+  if (status) status.textContent = "Loading student feedback…";
+  try {
+    const ratingRequest = supabaseRequest("rpc/material_rating_summary", {
+      method: "POST",
+      body: JSON.stringify({ target_material_id: materialId })
+    });
+    const commentParams = new URLSearchParams({
+      select: "display_name,comment,created_at",
+      material_id: `eq.${materialId}`,
+      comment: "not.is.null",
+      order: "created_at.desc",
+      limit: "20"
+    });
+    const commentRequest = supabaseRequest(`material_feedback?${commentParams}`);
+    const [ratingRows, comments] = await Promise.all([ratingRequest, commentRequest]);
+    const summary = Array.isArray(ratingRows) ? ratingRows[0] : ratingRows;
+    const feedback = {
+      average: Number(summary?.average_rating) || 0,
+      ratingCount: Number(summary?.rating_count) || 0,
+      comments: Array.isArray(comments) ? comments : []
+    };
+    feedbackCache.set(materialId, feedback);
+    if (document.querySelector(`[data-feedback-material="${CSS.escape(materialId)}"]`)) {
+      renderMaterialFeedback(document.querySelector(`[data-feedback-material="${CSS.escape(materialId)}"]`), feedback);
+    }
+  } catch (error) {
+    console.error("Could not load material feedback.", error);
+    const currentPanel = document.querySelector(`[data-feedback-material="${CSS.escape(materialId)}"]`);
+    const currentStatus = currentPanel?.querySelector("[data-feedback-status]");
+    const currentSummary = currentPanel?.querySelector("[data-rating-summary]");
+    const currentComments = currentPanel?.querySelector("[data-feedback-comments]");
+    if (currentSummary) currentSummary.textContent = "Ratings unavailable";
+    if (currentComments) currentComments.innerHTML = `<p class="feedback-empty">Comments could not be loaded.</p>`;
+    if (currentStatus) currentStatus.textContent = /material_feedback|material_rating_summary|schema cache|pgrst202/i.test(error.message)
+      ? "Feedback needs the latest Supabase schema. Run the updated supabase/schema.sql in the project SQL Editor."
+      : `Student feedback could not be loaded: ${error.message}`;
+  } finally {
+    feedbackLoadsInFlight.delete(materialId);
+  }
+}
+
+function renderMaterialFeedback(panel, feedback) {
+  const summary = panel.querySelector("[data-rating-summary]");
+  if (summary) {
+    summary.textContent = feedback.ratingCount
+      ? `${feedback.average.toFixed(1)} out of 5 · ${feedback.ratingCount} rating${feedback.ratingCount === 1 ? "" : "s"}`
+      : "No ratings yet";
+  }
+  const status = panel.querySelector("[data-feedback-status]");
+  if (status) {
+    const alreadyRated = localStorage.getItem(`study-hub-rated-${panel.dataset.feedbackMaterial}`) === "true";
+    status.textContent = alreadyRated
+      ? "Thanks for rating this PDF on this device."
+      : "Rate this PDF after you start downloading it, or leave a comment.";
+  }
+  const comments = panel.querySelector("[data-feedback-comments]");
+  if (!comments) return;
+  comments.innerHTML = feedback.comments.length
+    ? feedback.comments.map((entry) => {
+      const author = String(entry.display_name || "").trim() || "Student";
+      const date = new Date(entry.created_at);
+      const dateLabel = Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+      return `<article class="feedback-comment"><div class="feedback-comment-by"><strong>${escapeHtml(author)}</strong><time>${escapeHtml(dateLabel)}</time></div><p>${escapeHtml(entry.comment || "")}</p></article>`;
+    }).join("")
+    : `<p class="feedback-empty">No comments yet. Be the first to share your thoughts.</p>`;
+}
+
+async function submitMaterialFeedback(form) {
+  const panel = form.closest("[data-feedback-material]");
+  const materialId = panel?.dataset.feedbackMaterial;
+  if (!panel || !materialId || !isSupabaseReady()) throw new Error("Feedback is unavailable until the site database is connected.");
+  const values = new FormData(form);
+  const isRating = form.matches("[data-rating-form]");
+  const feedback = isRating
+    ? { material_id: materialId, rating: Number(values.get("rating")) }
+    : {
+      material_id: materialId,
+      display_name: String(values.get("display_name") || "").trim() || null,
+      comment: String(values.get("comment") || "").trim()
+    };
+  if (isRating) {
+    if (!Number.isInteger(feedback.rating) || feedback.rating < 1 || feedback.rating > 5) throw new Error("Choose a rating from 1 to 5 stars.");
+    if (localStorage.getItem(`study-hub-rated-${materialId}`) === "true") throw new Error("This device has already rated this PDF. Thank you!");
+  } else if (!feedback.comment || feedback.comment.length > 1000 || (feedback.display_name && feedback.display_name.length > 60)) {
+    throw new Error("Add a comment of up to 1,000 characters. Your name can be up to 60 characters.");
+  }
+  await supabaseRequest("material_feedback", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(feedback)
+  });
+  if (isRating) {
+    localStorage.setItem(`study-hub-rated-${materialId}`, "true");
+    form.hidden = true;
+    const status = panel.querySelector("[data-feedback-status]");
+    if (status) status.textContent = "Thank you for rating this PDF. Your feedback helps us improve!";
+  } else {
+    form.reset();
+  }
+  await loadMaterialFeedback(materialId, true);
+  notify(isRating ? "Thanks for your rating!" : "Your comment has been posted.");
+}
+
 function demoStore() {
   if (localMaterials) return localMaterials;
   try {
@@ -680,9 +795,9 @@ function detailPage(item) {
   const shortDescription = item.description || `Study ${subject} with this ${category?.title || item.category_slug} resource.`;
   const downloadUrl = fileUrl ? getDownloadUrl(fileUrl, item.title) : "";
   const statusNotice = item.license_status === "not_verified" ? `<div class="notice">This is a sample resource listing. A downloadable file is not available until the owner adds an authorised PDF.</div>` : "";
-  const preview = fileUrl
-    ? `<iframe class="pdf-frame" src="${escapeHtml(fileUrl)}#toolbar=1" title="Preview: ${escapeHtml(item.title)}" loading="lazy" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>`
-    : `<div class="empty-preview"><div><span aria-hidden="true" style="font-size:25px">▤</span><strong>PDF preview not added yet</strong><span>The page link is ready. The site owner can add a permitted PDF from the admin dashboard.</span></div></div>`;
+  const ratedKey = `study-hub-rated-${item.id}`;
+  const hasRated = localStorage.getItem(ratedKey) === "true";
+  const ratingPromptShown = sessionStorage.getItem(`study-hub-rating-prompt-${item.id}`) === "true";
   const previousNext = allPublicMaterials().filter((candidate) =>
     candidate.category_slug === item.category_slug && candidate.board_slug === item.board_slug
   );
@@ -695,8 +810,21 @@ function detailPage(item) {
       <h2>About this study material</h2><p>${escapeHtml(shortDescription)}</p>
       ${statusNotice}
       <div class="meta-list">${board ? `<div class="meta-item"><small>Board</small><strong>${escapeHtml(board.name)}</strong></div>` : ""}<div class="meta-item"><small>Exam / class</small><strong>${escapeHtml(category?.title || item.category_slug)}</strong></div><div class="meta-item"><small>Subject</small><strong>${escapeHtml(subject)}</strong></div><div class="meta-item"><small>Material</small><strong>${escapeHtml(item.type === "pyqs" ? "Previous year questions" : item.type === "chapter" ? "Chapter material" : "Study notes")}</strong></div><div class="meta-item"><small>Year</small><strong>${escapeHtml(item.year || "All years")}</strong></div></div>
-      <div class="detail-actions material-actions">${fileUrl ? `<a class="button button-download" href="${escapeHtml(downloadUrl)}"><span class="download-icon" aria-hidden="true"><svg viewBox="0 0 20 20" focusable="false"><path d="M10 2.75v9.1m0 0 3.4-3.4M10 11.85l-3.4-3.4M3.25 13.6v2.15c0 .83.67 1.5 1.5 1.5h10.5c.83 0 1.5-.67 1.5-1.5V13.6" /></svg></span><span>Download PDF</span><span class="download-arrow" aria-hidden="true">↓</span></a><a class="button button-outline" href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer">View material ↗</a>` : `<button class="button button-primary" disabled title="The owner has not added an authorised file yet">PDF not available yet</button>`}<a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div>
-      ${preview}
+      <div class="detail-actions material-actions">${fileUrl ? `<a class="button button-download" data-download-material="${escapeHtml(item.id)}" href="${escapeHtml(downloadUrl)}"><span class="download-icon" aria-hidden="true"><svg viewBox="0 0 20 20" focusable="false"><path d="M10 2.75v9.1m0 0 3.4-3.4M10 11.85l-3.4-3.4M3.25 13.6v2.15c0 .83.67 1.5 1.5 1.5h10.5c.83 0 1.5-.67 1.5-1.5V13.6" /></svg></span><span>Download PDF</span><span class="download-arrow" aria-hidden="true">↓</span></a>` : `<button class="button button-primary" disabled title="The owner has not added an authorised file yet">PDF not available yet</button>`}<button class="button button-outline" type="button" data-show-comments>💬 Comment</button><a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div>
+      <section class="feedback-panel" id="material-feedback" data-feedback-material="${escapeHtml(item.id)}" aria-labelledby="feedback-heading">
+        <div class="feedback-heading"><div><h2 id="feedback-heading">Student feedback</h2><p data-rating-summary>Loading ratings…</p></div><span class="feedback-stars" aria-hidden="true">★ ★ ★ ★ ★</span></div>
+        <p class="feedback-status" data-feedback-status role="status">${isSupabaseReady() ? "Rate this PDF after you start downloading it, or leave a comment." : "Feedback is available when the site database is connected."}</p>
+        <form class="feedback-rating-form" data-rating-form ${hasRated || !ratingPromptShown || !isSupabaseReady() ? "hidden" : ""}>
+          <label for="material-rating">How helpful was this PDF?</label>
+          <div class="feedback-form-row"><select id="material-rating" name="rating" required><option value="">Choose a rating</option><option value="5">★★★★★ — Excellent</option><option value="4">★★★★☆ — Very helpful</option><option value="3">★★★☆☆ — Helpful</option><option value="2">★★☆☆☆ — Not very helpful</option><option value="1">★☆☆☆☆ — Not helpful</option></select><button class="button button-primary" type="submit">Send rating</button></div>
+        </form>
+        <form class="feedback-comment-form" data-comment-form ${!isSupabaseReady() ? "hidden" : ""}>
+          <label for="comment-name">Your name <span>(optional)</span></label><input id="comment-name" name="display_name" maxlength="60" autocomplete="name" placeholder="Student">
+          <label for="material-comment">Leave a comment</label><textarea id="material-comment" name="comment" required maxlength="1000" placeholder="Was this material useful? Share your feedback…"></textarea>
+          <button class="button button-outline" type="submit">Post comment</button>
+        </form>
+        <div class="feedback-comments" data-feedback-comments aria-live="polite"><p class="feedback-empty">Loading comments…</p></div>
+      </section>
       <div class="detail-actions">${prev ? `<a class="button button-outline" href="${pathFor(materialPath(prev))}" data-link>← Previous</a>` : ""}${next ? `<a class="button button-outline" href="${pathFor(materialPath(next))}" data-link>Next →</a>` : ""}</div>
     </article><aside><section class="side-panel"><h2>Related materials</h2>${related.length ? `<div class="related-list">${related.map((entry) => `<a class="related-item" href="${pathFor(materialPath(entry))}" data-link><strong>${escapeHtml(entry.title)}</strong><small>${escapeHtml(entry.subject_name || entry.subject_slug)}${entry.year ? ` · ${escapeHtml(entry.year)}` : ""}</small></a>`).join("")}</div>` : `<p>More resources will appear here as they are added.</p>`}</section><section class="side-panel"><h2>Share this page</h2><p>This permanent address can be sent directly in your Telegram bot.</p><button class="button button-outline" type="button" data-copy-url>Copy page link</button></section></aside></div>
   </div>`;
@@ -778,7 +906,7 @@ const policyContent = {
   "privacy-policy": {
     title: "Privacy policy",
     description: "How this website handles information.",
-    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes. It does not use these features to track students across websites.</p><h2>Advertising</h2><p>This site loads Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads, subject to their policies and applicable consent requirements. Learn more in <a class="text-link" href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google's advertising policy ↗</a>.</p><h2>Your choices</h2><p>You can clear site data in your browser settings. For privacy questions, contact the site owner using the configured contact details.</p>`
+    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy. If you post material feedback, your comment, optional display name and submission time are stored with that material and shown publicly. Ratings are stored with the material and included in its public average.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes and to remember whether this device has rated a PDF. It does not use these features to track students across websites.</p><h2>Advertising</h2><p>This site loads Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads, subject to their policies and applicable consent requirements. Learn more in <a class="text-link" href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google's advertising policy ↗</a>.</p><h2>Your choices</h2><p>Do not include private or sensitive information in a public comment. You can clear site data in your browser settings. For privacy questions or to request removal of a comment, contact the site owner using the configured contact details.</p>`
   },
   terms: {
     title: "Terms & conditions",
@@ -948,7 +1076,7 @@ function pageData(route) {
       isAccessibleForFree: true,
       breadcrumb: breadcrumbData
     };
-    return { html: detailPage(material), title: material.seo_title || material.title, description: material.seo_description || material.description, route, structured };
+    return { html: detailPage(material), title: material.seo_title || material.title, description: material.seo_description || material.description, route, structured, feedbackMaterialId: material.id };
   }
   const parts = route.split("/").filter(Boolean);
   const boardRoute = parseBoardRoute(route);
@@ -1052,6 +1180,7 @@ function render() {
     adminMaterials = isSupabaseReady() ? adminMaterials : [...demoStore()];
     adminListMarkup();
   }
+  if (page.feedbackMaterialId) void loadMaterialFeedback(page.feedbackMaterialId);
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
   else window.scrollTo({ top: 0, behavior: "instant" });
   void loadRouteData(currentRoute);
@@ -1479,6 +1608,23 @@ function bindAdminEvents() {
 
 document.addEventListener("click", async (event) => {
   const target = event.target instanceof Element ? event.target : null;
+  const downloadLink = target?.closest("[data-download-material]");
+  if (downloadLink) {
+    const materialId = downloadLink.getAttribute("data-download-material");
+    if (materialId) {
+      sessionStorage.setItem(`study-hub-rating-prompt-${materialId}`, "true");
+      const ratingForm = document.querySelector(`[data-feedback-material="${CSS.escape(materialId)}"] [data-rating-form]`);
+      if (ratingForm && localStorage.getItem(`study-hub-rated-${materialId}`) !== "true") {
+        ratingForm.hidden = false;
+        ratingForm.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }
+  if (target?.closest("[data-show-comments]")) {
+    const commentForm = document.querySelector("[data-feedback-material] [data-comment-form]");
+    commentForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+    commentForm?.querySelector("textarea")?.focus({ preventScroll: true });
+  }
   const link = target?.closest("a[data-link]");
   if (link && link instanceof HTMLAnchorElement && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
     event.preventDefault();
@@ -1539,7 +1685,23 @@ document.addEventListener("click", async (event) => {
 
 document.addEventListener("submit", (event) => {
   const form = event.target;
-  if (!(form instanceof HTMLFormElement) || !form.matches("[data-search-form]")) return;
+  if (!(form instanceof HTMLFormElement)) return;
+  if (form.matches("[data-rating-form], [data-comment-form]")) {
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    void submitMaterialFeedback(form).catch((error) => {
+      console.error("Could not submit material feedback.", error);
+      const panel = form.closest("[data-feedback-material]");
+      const status = panel?.querySelector("[data-feedback-status]");
+      if (status) status.textContent = `Feedback could not be sent: ${error.message}`;
+      notify(`Could not send feedback: ${error.message}`, true);
+    }).finally(() => {
+      if (submitButton?.isConnected) submitButton.disabled = false;
+    });
+    return;
+  }
+  if (!form.matches("[data-search-form]")) return;
   event.preventDefault();
   const query = String(new FormData(form).get("q") || "").trim();
   navigate(`/search${query ? `?q=${encodeURIComponent(query)}` : ""}`);

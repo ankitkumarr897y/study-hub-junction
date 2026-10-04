@@ -153,10 +153,28 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
 .meta-item strong { font-size: 12px; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: 9px; margin: 17px 0 7px; }
 .material-actions { align-items: center; }
-.pdf-frame { width: 100%; min-height: 400px; margin-top: 17px; border: 1px solid var(--line); border-radius: 10px; background: #fafbfd; }
-.empty-preview { display: grid; min-height: 190px; place-items: center; padding: 20px; border: 1px dashed #d9e0ec; border-radius: 12px; text-align: center; color: #738098; background: #fafbfd; }
-.empty-preview strong { display: block; margin: 8px 0 2px; color: #45516a; }
-.empty-preview span { font-size: 11px; }
+.feedback-panel { scroll-margin-top: 18px; margin-top: 20px; padding: 17px; border: 1px solid #dce5f4; border-radius: 14px; background: linear-gradient(145deg,#fbfcff,#f5f8ff); }
+.feedback-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.feedback-heading h2 { margin: 0 0 4px; font-size: 16px; }
+.feedback-heading p, .feedback-status { margin: 0; color: var(--muted); font-size: 11px; }
+.feedback-stars { color: #e3a520; font-size: 14px; white-space: nowrap; }
+.feedback-status { margin: 12px 0; }
+.feedback-rating-form, .feedback-comment-form { display: grid; gap: 8px; margin-top: 13px; }
+.feedback-rating-form[hidden], .feedback-comment-form[hidden] { display: none; }
+.feedback-rating-form label, .feedback-comment-form label { color: #53617c; font-size: 10px; font-weight: 700; }
+.feedback-comment-form label span { color: #8b95a6; font-weight: 400; }
+.feedback-rating-form select, .feedback-comment-form input, .feedback-comment-form textarea { width: 100%; min-width: 0; padding: 10px; border: 1px solid #dfe5ef; border-radius: 8px; outline: none; color: var(--ink); background: #fff; font: inherit; font-size: 12px; }
+.feedback-comment-form textarea { min-height: 76px; resize: vertical; }
+.feedback-rating-form select:focus, .feedback-comment-form input:focus, .feedback-comment-form textarea:focus { border-color: #8eabeb; box-shadow: 0 0 0 3px #eaf0ff; }
+.feedback-form-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.feedback-form-row select { flex: 1 1 210px; }
+.feedback-form-row .button { flex: 0 0 auto; }
+.feedback-comments { display: grid; gap: 9px; margin-top: 15px; }
+.feedback-comment { padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.feedback-comment-by { display: flex; justify-content: space-between; gap: 10px; color: #52607a; font-size: 10px; }
+.feedback-comment-by time { color: #8b95a6; font-size: 9px; }
+.feedback-comment p, .feedback-empty { margin: 6px 0 0; color: #5f6b84; font-size: 11px; white-space: pre-line; overflow-wrap: anywhere; }
+.feedback-empty { color: #8b95a6; }
 .side-panel { margin-bottom: 12px; }
 .side-panel p { color: var(--muted); font-size: 11px; }
 .related-list { display: grid; gap: 9px; }
@@ -279,7 +297,8 @@ h1, h2, h3 { font-family: "Manrope", "Segoe UI", sans-serif; }
   .page-heading p { font-size: 12px; }
   .material-detail-grid { grid-template-columns: 1fr; gap: 10px; }
   .detail-panel, .side-panel, .form-panel, .policy-panel { padding: 15px; }
-  .pdf-frame { min-height: 310px; }
+  .feedback-panel { padding: 13px; }
+  .feedback-form-row .button { flex-basis: 100%; }
   .admin-item { align-items: flex-start; }
   .admin-actions { flex-direction: column; }
   .form-grid { gap: 9px; }

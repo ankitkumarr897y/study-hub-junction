@@ -73,6 +73,39 @@ create table if not exists public.materials (
   )
 );
 
+create table if not exists public.material_feedback (
+  id uuid primary key default gen_random_uuid(),
+  material_id uuid not null references public.materials(id) on delete cascade,
+  display_name text check (display_name is null or length(trim(display_name)) between 1 and 60),
+  comment text check (comment is null or length(trim(comment)) between 1 and 1000),
+  rating smallint check (rating is null or rating between 1 and 5),
+  created_at timestamptz not null default now(),
+  check (
+    (rating is not null and comment is null and display_name is null)
+    or (rating is null and nullif(trim(comment), '') is not null)
+  )
+);
+
+create index if not exists material_feedback_material_created_idx
+  on public.material_feedback (material_id, created_at desc);
+create index if not exists material_feedback_ratings_idx
+  on public.material_feedback (material_id, rating)
+  where rating is not null;
+
+create or replace function public.material_rating_summary(target_material_id uuid)
+returns table (rating_count bigint, average_rating numeric)
+language sql
+stable
+security invoker
+set search_path = pg_catalog, public
+as $$
+  select count(*)::bigint,
+    coalesce(round(avg(feedback.rating)::numeric, 1), 0::numeric)
+  from public.material_feedback as feedback
+  where feedback.material_id = target_material_id
+    and feedback.rating is not null;
+$$;
+
 -- Migrate an earlier generated-column version, if one was partially applied.
 do $$
 begin
@@ -234,6 +267,9 @@ grant insert, update, delete on public.boards to authenticated;
 grant select on public.materials to anon, authenticated;
 grant insert, update, delete on public.materials to authenticated;
 grant execute on function public.search_materials(text, integer, integer) to anon, authenticated;
+grant select, insert on public.material_feedback to anon, authenticated;
+grant delete on public.material_feedback to authenticated;
+grant execute on function public.material_rating_summary(uuid) to anon, authenticated;
 
 drop policy if exists "Anyone can read categories" on public.categories;
 create policy "Anyone can read categories" on public.categories for select to anon, authenticated using (true);
@@ -265,6 +301,25 @@ create policy "Anyone can read published materials" on public.materials for sele
 drop policy if exists "Admins manage materials" on public.materials;
 create policy "Admins manage materials" on public.materials for all to authenticated
   using (public.is_site_admin()) with check (public.is_site_admin());
+
+alter table public.material_feedback enable row level security;
+drop policy if exists "Anyone can read feedback for published materials" on public.material_feedback;
+create policy "Anyone can read feedback for published materials" on public.material_feedback
+  for select to anon, authenticated
+  using (exists (
+    select 1 from public.materials
+    where materials.id = material_feedback.material_id and materials.is_published
+  ));
+drop policy if exists "Anyone can comment on published materials" on public.material_feedback;
+create policy "Anyone can comment on published materials" on public.material_feedback
+  for insert to anon, authenticated
+  with check (exists (
+    select 1 from public.materials
+    where materials.id = material_feedback.material_id and materials.is_published
+  ));
+drop policy if exists "Admins delete material feedback" on public.material_feedback;
+create policy "Admins delete material feedback" on public.material_feedback
+  for delete to authenticated using (public.is_site_admin());
 
 insert into public.categories (slug, name, kind, description) values
   ('class-9', 'Class 9', 'Class', 'Build strong foundations with clear notes and chapter-wise practice.'),

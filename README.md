@@ -71,7 +71,7 @@ For a new material, the admin dashboard generates its URL from category, materia
 
 1. For the current Vercel site, connect the project repository to Vercel or redeploy the updated project files; include `vercel.json` from the project root. The SPA rewrite is needed so a Telegram deep link such as `/neet/pyqs/2025/biology` returns the app directly. If you instead use GitHub Pages, create a **public GitHub repository** named `StudyHubJunction` and upload the contents of this folder to the repository root. Include the hidden `.github` folder (especially `.github/workflows/pages.yml`) and `.nojekyll`; if using Windows File Explorer, enable **View → Show → Hidden items** before selecting the files.
 2. **GitHub Pages alternative only:** open **Settings → Pages**, choose **GitHub Actions** as the source. Push to `main`; `.github/workflows/pages.yml` deploys the site. Wait for the Pages deployment link to appear in Actions.
-3. Create a Supabase project on its free tier. In **SQL Editor**, run [`supabase/schema.sql`](./supabase/schema.sql). It creates the database, RLS policies, school-board registry, categories and unpublished example drafts. If you previously ran an older version, run the entire updated schema again; it adds the board table and optional `board_slug` column while preserving existing non-board URLs. If you previously saw `generation expression is not immutable`, the current schema uses a trigger-maintained full-text search column instead.
+3. Create a Supabase project on its free tier. In **SQL Editor**, run [`supabase/schema.sql`](./supabase/schema.sql). It creates the database, RLS policies, school-board registry, categories, feedback tables and unpublished example drafts. If you previously ran an older version, run the entire updated schema again; it adds the board table, optional `board_slug` column and feedback support while preserving existing materials. If you previously saw `generation expression is not immutable`, the current schema uses a trigger-maintained full-text search column instead.
 4. In Supabase Auth, create your own admin user and turn off public sign-ups. In SQL Editor, assign the protected admin claim to that exact email (replace the example):
 
    ```sql
@@ -101,6 +101,12 @@ For a new material, the admin dashboard generates its URL from category, materia
 5. The dashboard generates its permanent URL automatically. For example, NEET → PYQs → 2025 → Biology is `/neet/pyqs/2025/biology`. Copy that page URL and send it from your Telegram bot.
 
 The bucket and its access policies are created by `supabase/schema.sql`; run the updated SQL in Supabase SQL Editor before uploading. PDF downloads are public to visitors, but only an authenticated admin can upload or remove stored files. Replacing a PDF cleans up the previous file after the updated record saves.
+
+### Student comments and ratings
+
+Run the latest [`supabase/schema.sql`](./supabase/schema.sql) in Supabase SQL Editor to enable feedback. On a material page, students can use **Comment** to jump to the comment form; comments are shown publicly as soon as submitted. The rating form appears after the student clicks **Download PDF**. The site cannot verify that an external download finished, so the prompt follows the download click. Ratings are limited to one per browser/device using local storage; this is a convenience check, not a fraud-proof identity system. Names are optional. Comments and ratings are attached to the material and disappear if that material is deleted.
+
+Material pages provide a direct PDF download and no longer embed or link to an in-page PDF preview.
 
 ## Telegram bot
 

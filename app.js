@@ -135,6 +135,16 @@ function activeBoards() {
   return siteBoards;
 }
 
+function visibleBoards() {
+  const hiddenBoardSlugs = new Set(["icse", "up-board"]);
+  return activeBoards().filter((board) => !hiddenBoardSlugs.has(board.slug));
+}
+
+function visibleCategories() {
+  const hiddenCategorySlugs = new Set(["ssc"]);
+  return activeCategories().filter((category) => !hiddenCategorySlugs.has(category.slug));
+}
+
 function parseBoardRoute(route) {
   const parts = route.split("?")[0].split("/").filter(Boolean);
   const boardSlug = parts[0] === "jac" ? "jac-board" : parts[0];
@@ -194,9 +204,14 @@ async function fetchCategoryPage(route, offset = 0) {
     offset: String(offset)
   });
   const section = parts[categoryIndex + 1];
-  if (section === "notes" || section === "pyqs" || section === "chapter" || section === "chapters") {
-    params.set("type", `eq.${section === "chapters" ? "chapter" : section}`);
-    if (section === "pyqs" && /^\d{4}$/.test(parts[categoryIndex + 2] || "")) {
+  const materialSection = section === "chapters" ? "chapter" : section;
+  if (section === "notes" || section === "short-notes" || section === "pyqs" || section === "chapter" || section === "chapters" || section === "model-paper" || section === "model-question-paper" || section === "model-papers" || section === "solved-paper" || section === "solved-papers") {
+    const materialType = materialSection === "short-notes" ? "short-notes"
+      : ["model-paper", "model-question-paper", "model-papers"].includes(materialSection) ? "model-paper"
+        : ["solved-paper", "solved-papers"].includes(materialSection) ? "solved-paper"
+          : materialSection;
+    params.set("type", `eq.${materialType}`);
+    if ((section === "pyqs" || ["model-paper", "model-question-paper", "model-papers", "solved-paper"].includes(section)) && /^(\d{4}|\d{4}-\d{2})$/.test(parts[categoryIndex + 2] || "")) {
       params.set("year", `eq.${parts[categoryIndex + 2]}`);
       if (parts[categoryIndex + 3]) params.set("subject_slug", `eq.${parts[categoryIndex + 3]}`);
     } else if (parts[categoryIndex + 2]) {
@@ -247,6 +262,12 @@ async function loadRouteData(route) {
   if (!query && boardRoute && parts.length === 2 && boardBySlug.has(parts[0]) && categoryBySlug.has(categorySlug) && categoryPageCache.has(route.split("?")[0])) return;
   if (!query && !boardRoute && categoryBySlug.has(parts[0]) && categoryPageCache.has(route.split("?")[0])) return;
   if (!query && parts.length > 1 && allPublicMaterials().some((item) => materialPath(item) === route.split("?")[0])) return;
+  const sectionRoute = parts[1] ? parts[1].toLowerCase() : "";
+  const materialCollectionRoutes = new Set(["notes", "short-notes", "pyqs", "chapter", "chapters", "model-paper", "model-question-paper", "model-papers", "solved-paper", "solved-papers"]);
+  if (!query && sectionRoute && materialCollectionRoutes.has(sectionRoute) && categoryBySlug.has(parts[0])) {
+    const directRoute = route.split("?")[0];
+    if (categoryPageCache.has(directRoute)) return;
+  }
   routeLoadsInFlight.add(loadKey);
   try {
     if (query && route.startsWith("/search")) {
@@ -514,6 +535,18 @@ function normaliseSearchText(value) {
     .join(" ");
 }
 
+function materialTypeMeta(type) {
+  const labelMap = {
+    notes: "Study notes",
+    "short-notes": "Short notes",
+    pyqs: "Previous year questions",
+    chapter: "Chapter material",
+    "model-paper": "Model question paper",
+    "solved-paper": "Solved paper"
+  };
+  return labelMap[type] || "Study material";
+}
+
 function materialSearchFields(item) {
   const category = categoryBySlug.get(item.category_slug);
   const board = item.board_slug ? boardBySlug.get(item.board_slug) : null;
@@ -521,7 +554,11 @@ function materialSearchFields(item) {
     ? "pyq pyqs previous year questions"
     : item.type === "chapter"
       ? "chapter chapters topic"
-      : "notes revision";
+      : item.type === "model-paper"
+        ? "model question paper model-paper sample paper"
+        : item.type === "solved-paper"
+          ? "solved paper answer key solutions"
+          : "notes revision";
   return {
     title: normaliseSearchText(item.title),
     subject: normaliseSearchText(`${item.subject_name || ""} ${item.subject_slug || ""}`),
@@ -676,7 +713,7 @@ function materialCard(item) {
   const category = categoryBySlug.get(item.category_slug);
   const board = item.board_slug ? boardBySlug.get(item.board_slug) : null;
   const destination = pathFor(materialPath(item));
-  const kind = item.type === "pyqs" ? "Previous year questions" : item.type === "chapter" ? "Chapter material" : "Study notes";
+  const kind = materialTypeMeta(item.type);
   return `<a class="material-card" href="${escapeHtml(destination)}" data-link>
     <div class="material-labels">
       <span class="pill">${escapeHtml(board ? `${board.name} · ${category?.title || item.category_slug}` : category?.title || item.category_slug)}</span>
@@ -697,7 +734,7 @@ function categoryCard(category) {
 }
 
 function boardCard(board) {
-  return `<a class="category-card blue" href="${pathFor(`/boards/${board.slug}`)}" data-link>
+  return `<a class="category-card blue board-card-${escapeHtml(board.slug)}" href="${pathFor(`/boards/${board.slug}`)}" data-link>
     <div class="category-card-top"><span class="category-icon">🏫</span><span class="category-kind">School board</span></div>
     <h3>${escapeHtml(board.name)}</h3><p>${escapeHtml(board.description || "Browse board-wise classes, notes and question papers.")}</p>
     <span class="category-arrow" aria-hidden="true">Choose class →</span>
@@ -708,7 +745,7 @@ function boardsPage(board = null) {
   if (!board) {
     return `<div class="container page-content">${breadcrumb([{ label: "School boards" }])}
       <div class="page-heading"><span class="eyebrow">Board-wise study</span><h1>Choose your board</h1><p>Select your school board first, then choose your class to find matching study materials.</p></div>
-      <div class="category-grid">${activeBoards().map(boardCard).join("")}</div>
+      <div class="category-grid">${visibleBoards().map(boardCard).join("")}</div>
       <section class="section"><p class="field-hint">More boards can be added as study materials become available.</p></section>
     </div>`;
   }
@@ -736,20 +773,21 @@ function homePage() {
     return timestamp(right) - timestamp(left);
   }).slice(0, 6);
   const recommended = recommendedMaterials(items, 3);
+  const examCategories = visibleCategories().filter((category) => !/^class-(9|10|11|12)$/.test(category.slug));
   return `<section class="home-hero"><div class="container hero-layout">
     <div>
       <span class="eyebrow"><i class="eyebrow-dot"></i> Your next chapter starts here</span>
       <h1 class="hero-title">Make every study session <em>count.</em></h1>
-      <p class="hero-copy">Find organised notes and practice material for school, entrance exams and competitive tests — all in one student-friendly place.</p>
+      <p class="hero-copy">Find organised notes, PYQs, model question papers, solved papers and exam-ready study resources for JEE, NEET, SSC and board preparation.</p>
       <form class="search-form" data-search-form role="search"><span class="search-icon" aria-hidden="true">⌕</span><input name="q" type="search" placeholder="Try “NEET Biology” or “Class 10 Maths”" aria-label="Search study material"><button class="button button-primary" type="submit">Search</button></form>
-      <div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths", "SSC PYQ"].map((query) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(query)}`)}" data-link>${escapeHtml(query)} <span aria-hidden="true">↗</span></a>`).join("")}</div>
+      <div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths"].map((query) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(query)}`)}" data-link>${escapeHtml(query)} <span aria-hidden="true">↗</span></a>`).join("")}</div>
       <div class="benefit-row"><span>Quick subject-wise search</span><span>Direct links to every resource</span></div>
     </div>
-    <div class="hero-visual" aria-hidden="true"><div class="hero-logo-card">${brandMark()}</div><div class="hero-badge"><strong>${activeCategories().length} learning paths</strong>one clear place to start</div></div>
+    <div class="hero-visual" aria-hidden="true"><div class="hero-logo-card">${brandMark()}</div><div class="hero-badge"><strong>${examCategories.length} learning paths</strong>one clear place to start</div></div>
   </div></section>
   <div class="container home-content">
-    <section class="section">${sectionHeading("School boards", "Choose CBSE, ICSE, JAC Board or another board, then select your class.", "/boards", "Explore boards")}<div class="category-grid">${activeBoards().map(boardCard).join("")}</div></section>
-    <section class="section">${sectionHeading("Explore your path", "Choose a class or exam to see all its resources.", "/class-9")}<div class="category-grid">${activeCategories().map(categoryCard).join("")}</div></section>
+    <section class="section">${sectionHeading("School boards", "Choose CBSE, JAC Board, Bihar Board or another available board, then select your class.", "/boards", "Explore boards")}<div class="category-grid">${visibleBoards().map(boardCard).join("")}</div></section>
+    <section class="section">${sectionHeading("Explore your path", "Choose an exam to see all its resources.", "/jee-main")}<div class="category-grid">${examCategories.map(categoryCard).join("")}</div></section>
     <section class="section">${sectionHeading("Picked for your next study session", "Useful resources first, with a fresh mix across subjects.", "/search")}<div class="material-grid">${recommended.map(materialCard).join("")}</div></section>
     <section class="section">${sectionHeading("Latest materials", "Newly added resources, ready for your next study session.", "/search")}<div class="material-grid">${recent.map(materialCard).join("")}</div></section>
     <section class="section">${sectionHeading("Previous year questions", "Browse exam practice by year and subject.", "/jee-main/pyqs")}<div class="material-grid">${items.filter((item) => item.type === "pyqs").slice(0, 3).map(materialCard).join("")}</div></section>
@@ -788,11 +826,13 @@ function detailPage(item) {
     .slice(0, 4)
     .map(({ item: candidate }) => candidate);
   const fileUrl = getSafeExternalUrl(item.file_url);
+  const typeLabel = materialTypeMeta(item.type);
+  const typeRoute = item.type === "model-paper" ? "model-question-paper" : item.type;
   const crumbs = [
     ...(board ? [{ label: "Boards", href: "/boards" }, { label: board.name, href: `/boards/${board.slug}` }] : []),
     { label: category?.title || item.category_slug, href: board ? `/${board.slug}/${item.category_slug}` : `/${item.category_slug}` },
-    { label: item.type === "pyqs" ? "PYQs" : item.type === "chapter" ? "Chapters" : "Notes", href: `${board ? `/${board.slug}` : ""}/${item.category_slug}/${item.type}` },
-    ...(item.year ? [{ label: String(item.year), href: `${board ? `/${board.slug}` : ""}/${item.category_slug}/pyqs/${item.year}` }] : []),
+    { label: typeLabel, href: `${board ? `/${board.slug}` : ""}/${item.category_slug}/${typeRoute}` },
+    ...(item.year ? [{ label: String(item.year), href: `${board ? `/${board.slug}` : ""}/${item.category_slug}/${typeRoute}/${item.year}` }] : []),
     { label: subject }
   ];
   const canonicalPath = pathFor(materialPath(item));
@@ -813,7 +853,7 @@ function detailPage(item) {
     <div class="material-detail-grid"><article class="detail-panel">
       <h2>About this study material</h2><p>${escapeHtml(shortDescription)}</p>
       ${statusNotice}
-      <div class="meta-list">${board ? `<div class="meta-item"><small>Board</small><strong>${escapeHtml(board.name)}</strong></div>` : ""}<div class="meta-item"><small>Exam / class</small><strong>${escapeHtml(category?.title || item.category_slug)}</strong></div><div class="meta-item"><small>Subject</small><strong>${escapeHtml(subject)}</strong></div><div class="meta-item"><small>Material</small><strong>${escapeHtml(item.type === "pyqs" ? "Previous year questions" : item.type === "chapter" ? "Chapter material" : "Study notes")}</strong></div><div class="meta-item"><small>Year</small><strong>${escapeHtml(item.year || "All years")}</strong></div></div>
+      <div class="meta-list">${board ? `<div class="meta-item"><small>Board</small><strong>${escapeHtml(board.name)}</strong></div>` : ""}<div class="meta-item"><small>Exam / class</small><strong>${escapeHtml(category?.title || item.category_slug)}</strong></div><div class="meta-item"><small>Subject</small><strong>${escapeHtml(subject)}</strong></div><div class="meta-item"><small>Material</small><strong>${escapeHtml(typeLabel)}</strong></div><div class="meta-item"><small>Year</small><strong>${escapeHtml(item.year || "All years")}</strong></div></div>
       <div class="detail-actions material-actions">${fileUrl ? `<a class="button button-download" data-download-material="${escapeHtml(item.id)}" href="${escapeHtml(downloadUrl)}"><span class="download-icon" aria-hidden="true"><svg viewBox="0 0 20 20" focusable="false"><path d="M10 2.75v9.1m0 0 3.4-3.4M10 11.85l-3.4-3.4M3.25 13.6v2.15c0 .83.67 1.5 1.5 1.5h10.5c.83 0 1.5-.67 1.5-1.5V13.6" /></svg></span><span>Download PDF</span><span class="download-arrow" aria-hidden="true">↓</span></a>` : `<button class="button button-primary" disabled title="The owner has not added an authorised file yet">PDF not available yet</button>`}<button class="button button-outline" type="button" data-show-comments>💬 Comment</button><a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div>
       <section class="feedback-panel" id="material-feedback" data-feedback-material="${escapeHtml(item.id)}" aria-labelledby="feedback-heading">
         <div class="feedback-heading"><div><h2 id="feedback-heading">Student feedback</h2><p data-rating-summary>Loading ratings…</p></div><span class="feedback-stars" aria-hidden="true">★ ★ ★ ★ ★</span></div>
@@ -842,10 +882,10 @@ function categoryPage(category, route) {
   const section = parts[categoryIndex + 1];
   let year = null;
   let subject = null;
-  if (section === "pyqs") {
-    if (/^\d{4}$/.test(parts[categoryIndex + 2] || "")) year = parts[categoryIndex + 2];
+  if (section === "pyqs" || ["model-paper", "model-question-paper", "model-papers"].includes(section)) {
+    if (/^(\d{4}|\d{4}-\d{2})$/.test(parts[categoryIndex + 2] || "")) year = parts[categoryIndex + 2];
     subject = parts[categoryIndex + 3] || null;
-  } else if (section === "notes" || section === "chapter" || section === "chapters") {
+  } else if (section === "notes" || section === "short-notes" || section === "chapter" || section === "chapters") {
     subject = parts[categoryIndex + 2] || null;
   } else if (parts[categoryIndex + 1]) {
     subject = parts[categoryIndex + 1];
@@ -854,24 +894,42 @@ function categoryPage(category, route) {
   let items = categoryPageCache.get(route)?.items || allPublicMaterials().filter((item) =>
     item.category_slug === category.slug && (board ? item.board_slug === board.slug : !item.board_slug)
   );
-  if (section === "notes" || section === "pyqs" || section === "chapter" || section === "chapters") {
-    const type = section === "chapters" ? "chapter" : section;
+  if (section === "notes" || section === "short-notes" || section === "pyqs" || section === "chapter" || section === "chapters" || section === "model-paper" || section === "model-question-paper" || section === "model-papers") {
+    const type = section === "chapters" ? "chapter"
+      : section === "short-notes" ? "notes"
+        : ["model-paper", "model-question-paper", "model-papers"].includes(section) ? "model-paper"
+          : section;
     items = items.filter((item) => item.type === type);
   }
-  if (year && /^\d{4}$/.test(year)) items = items.filter((item) => String(item.year) === year);
+  if (year && /^(\d{4}|\d{4}-\d{2})$/.test(year)) items = items.filter((item) => String(item.year) === year);
   if (subject && subject !== "all") items = items.filter((item) => item.subject_slug === subject);
   if (parts.length > categoryIndex + 1 && !section) items = items.filter((item) => item.subject_slug === parts[categoryIndex + 1]);
-  const label = section === "pyqs" ? "Previous year questions" : section === "notes" ? "Study notes" : section ? `${section.replace(/-/g, " ")} resources` : "Study materials";
+  const label = section === "pyqs" ? "Previous year questions"
+    : section === "notes" ? "Study notes"
+      : section === "short-notes" ? "Short notes"
+        : ["model-paper", "model-question-paper", "model-papers"].includes(section) ? "Model question papers"
+          : section ? `${section.replace(/-/g, " ")} resources` : "Study materials";
   const crumbs = [
     ...(board ? [{ label: "Boards", href: "/boards" }, { label: board.name, href: `/boards/${board.slug}` }] : []),
     { label: category.title },
-    ...(section ? [{ label: section.toUpperCase(), href: `${routePrefix}/${section}` }] : []),
+    ...(section ? [{
+      label: section === "short-notes" ? "Short Notes"
+        : ["model-paper", "model-question-paper", "model-papers"].includes(section) ? "Model Papers"
+          : section.toUpperCase(),
+      href: `${routePrefix}/${section}`
+    }] : []),
     ...(year ? [{ label: year }] : []),
     ...(subject ? [{ label: subject }] : [])
   ];
   return `<div class="container page-content">${breadcrumb(crumbs)}
     <div class="page-heading"><span class="eyebrow">${escapeHtml(board ? `${board.name} · ${category.title}` : category.kind)}</span><h1>${board ? `${escapeHtml(board.name)} · ` : ""}${escapeHtml(category.title)} ${section ? `· ${escapeHtml(label)}` : "study material"}</h1><p>${escapeHtml(category.description)} Browse ${board ? `${escapeHtml(board.name)}-specific ` : ""}notes, PYQs and topic-wise resources. Every material has a direct link you can share from Telegram.</p></div>
-    <div class="category-tabs"><a class="${!section ? "active" : ""}" href="${pathFor(routePrefix)}" data-link>All materials</a><a class="${section === "notes" ? "active" : ""}" href="${pathFor(`${routePrefix}/notes`)}" data-link>Notes</a><a class="${section === "pyqs" ? "active" : ""}" href="${pathFor(`${routePrefix}/pyqs`)}" data-link>Previous year questions</a>${category.kind === "Class" ? `<a href="${pathFor(`${routePrefix}/chapters`)}" data-link>Chapters</a>` : ""}</div>
+    <nav class="category-tabs" aria-label="${escapeHtml(category.title)} material sections">
+      <a class="${!section ? "active" : ""}" href="${pathFor(routePrefix)}" data-link><span aria-hidden="true">✦</span> All materials</a>
+      <a class="${section === "notes" ? "active" : ""}" href="${pathFor(`${routePrefix}/notes`)}" data-link><span aria-hidden="true">▤</span> Notes</a>
+      <a class="${section === "pyqs" ? "active" : ""}" href="${pathFor(`${routePrefix}/pyqs`)}" data-link><span aria-hidden="true">◷</span> Previous year questions</a>
+      ${["jee-main", "jee-advanced", "neet"].includes(category.slug) ? `<a class="${section === "short-notes" ? "active" : ""}" href="${pathFor(`${routePrefix}/short-notes`)}" data-link><span aria-hidden="true">✧</span> Short notes</a>` : ""}
+      ${category.kind === "Class" ? `<a class="${["model-paper", "model-question-paper", "model-papers"].includes(section) ? "active" : ""}" href="${pathFor(`${routePrefix}/model-question-paper`)}" data-link><span aria-hidden="true">▣</span> Model papers</a><a href="${pathFor(`${routePrefix}/chapters`)}" data-link><span aria-hidden="true">◫</span> Chapters</a>` : ""}
+    </nav>
     ${items.length ? `<div class="material-grid">${items.map(materialCard).join("")}</div>${categoryPageCache.get(route)?.hasMore ? `<div class="form-actions"><button class="button button-outline" type="button" data-load-more="${escapeHtml(route)}">Load more materials</button></div>` : ""}` : emptyState("No materials here yet", "We haven’t added a resource for this selection. Try another subject or browse all available categories.", board ? `/boards/${board.slug}` : `/${category.slug}`)}
     <section class="section"><div class="telegram-banner"><div><span class="telegram-kicker">Stay connected</span><h2>Get new resource updates</h2><p>Use the bot for materials and join the channel for updates.</p></div><div class="telegram-actions"><a class="button button-telegram" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">${telegramIcon()}<span>Open study bot</span><span aria-hidden="true">↗</span></a>${safeTelegramChannelUrl ? `<a class="button button-channel" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">${channelIcon()}<span>Join channel</span><span aria-hidden="true">↗</span></a>` : ""}</div></div></section>
   </div>`;
@@ -890,7 +948,7 @@ function searchPage(query) {
   return `<div class="container page-content">${breadcrumb([{ label: "Search" }])}
     <div class="page-heading"><span class="eyebrow">Find a resource</span><h1>Search study material</h1><p>Search by exam, class, subject, year or topic.</p></div>
     <form class="search-form" data-search-form role="search"><span class="search-icon" aria-hidden="true">⌕</span><input name="q" type="search" value="${escapeHtml(q)}" placeholder="Try “NEET Biology” or “Class 10 Maths”" aria-label="Search study material"><button class="button button-primary" type="submit">Search</button></form>
-    ${!q ? `<div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths", "SSC PYQ"].map((term) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(term)}`)}" data-link>${escapeHtml(term)} <span aria-hidden="true">↗</span></a>`).join("")}</div>` : ""}
+    ${!q ? `<div class="search-suggestions" aria-label="Popular searches">${["NEET Biology", "JEE Physics", "Class 10 Maths"].map((term) => `<a class="search-chip" href="${pathFor(`/search?q=${encodeURIComponent(term)}`)}" data-link>${escapeHtml(term)} <span aria-hidden="true">↗</span></a>`).join("")}</div>` : ""}
     <section class="section">${q ? `<div class="section-heading"><div><h2>${results.length ? `${results.length} ${results.length === 1 ? "result" : "results"}` : "No results found"}</h2><p>Showing matches for “${escapeHtml(q)}”</p></div></div>${results.length ? `<div class="material-grid">${results.map(materialCard).join("")}</div>` : emptyState("Try another search", "Check the spelling, use a shorter phrase, or browse by class or exam.", "/")}` : emptyState("What are you studying today?", "Enter an exam, class, subject or topic to find relevant study material.", "/")}
     </section>
   </div>`;
@@ -899,13 +957,13 @@ function searchPage(query) {
 const policyContent = {
   about: {
     title: "About Study Hub Junction",
-    description: "A simple place to find organised learning resources.",
-    body: `<p>Study Hub Junction is designed to help students discover study notes and practice resources for school classes, entrance exams and competitive tests. Resources are organised by category, subject, year and chapter so each page can be linked directly.</p><p>We aim to publish only resources that are original, authorised, appropriately licensed or in the public domain. If you spot a rights or accuracy concern, please contact the site owner.</p>`
+    description: "A student-first platform for notes, PYQs and exam preparation resources.",
+    body: `<p>Study Hub Junction is a student-first learning platform for class notes, exam preparation materials, chapter-wise resources, model papers, solved papers and previous year questions for Classes 9–12, JEE Main, JEE Advanced, NEET and SSC. The structure is built for easy discovery, direct access and mobile-friendly study routines.</p><p>We aim to publish only resources that are original, authorised, appropriately licensed or in the public domain. Every material page is designed to be searchable, direct-link friendly and helpful for quick revision. If you spot a rights or accuracy concern, please contact the site owner.</p>`
   },
   contact: {
     title: "Contact us",
-    description: "Get in touch with Study Hub Junction.",
-    body: `<p>For questions, corrections, accessibility feedback or copyright concerns, contact the site owner.</p>${config.adminEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.adminEmail) ? `<p>Email: <a class="text-link" href="mailto:${escapeHtml(config.adminEmail)}">${escapeHtml(config.adminEmail)}</a></p>` : `<p>Configure a public contact email before publishing this page.</p>`}<p>Telegram study bot: <a class="text-link" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Open Study Hub Junction bot ↗</a></p>${safeTelegramChannelUrl ? `<p>Telegram channel: <a class="text-link" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">Join Study Hub Junction channel ↗</a></p>` : ""}`
+    description: "Get in touch with Study Hub Junction for study material support and feedback.",
+    body: `<p>For questions, corrections, accessibility feedback, academic resource updates or copyright concerns, contact the site owner.</p>${config.contactEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.contactEmail) ? `<p>Email: <a class="text-link" href="mailto:${escapeHtml(config.contactEmail)}">${escapeHtml(config.contactEmail)}</a></p>` : config.adminEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.adminEmail) ? `<p>Email: <a class="text-link" href="mailto:${escapeHtml(config.adminEmail)}">${escapeHtml(config.adminEmail)}</a></p>` : `<p>Configure a public contact email before publishing this page.</p>`}<p>Telegram study bot: <a class="text-link" href="${escapeHtml(safeTelegramUrl)}" target="_blank" rel="noopener noreferrer">Open Study Hub Junction bot ↗</a></p>${safeTelegramChannelUrl ? `<p>Telegram channel: <a class="text-link" href="${escapeHtml(safeTelegramChannelUrl)}" target="_blank" rel="noopener noreferrer">Join Study Hub Junction channel ↗</a></p>` : ""}`
   },
   "privacy-policy": {
     title: "Privacy policy",
@@ -946,9 +1004,9 @@ function materialForm(item = {}) {
       <div class="field full"><label for="material-title">Material title *</label><input id="material-title" name="title" value="${escapeHtml(item.title || "")}" required maxlength="180" placeholder="NEET Biology PYQs 2025"></div>
       <div class="field"><label for="material-category">Exam / class *</label><select id="material-category" name="category_slug" required>${categoryOptions}</select></div>
       <div class="field"><label for="material-board">School board</label><select id="material-board" name="board_slug">${boardOptions}</select><span class="field-hint">Choose a board for board-specific Class 9–12 material. Leave blank for shared resources and competitive exams.</span></div>
-      <div class="field"><label for="material-type">Material type *</label><select id="material-type" name="type"><option value="notes" ${item.type === "notes" ? "selected" : ""}>Notes</option><option value="pyqs" ${item.type === "pyqs" ? "selected" : ""}>Previous year questions (PYQs)</option><option value="chapter" ${item.type === "chapter" ? "selected" : ""}>Chapter material</option></select></div>
+      <div class="field"><label for="material-type">Material type *</label><select id="material-type" name="type"><option value="notes" ${item.type === "notes" ? "selected" : ""}>Notes</option><option value="short-notes" ${item.type === "short-notes" ? "selected" : ""}>Short notes</option><option value="pyqs" ${item.type === "pyqs" ? "selected" : ""}>Previous year questions (PYQs)</option><option value="model-paper" ${item.type === "model-paper" ? "selected" : ""}>Model question paper</option><option value="solved-paper" ${item.type === "solved-paper" ? "selected" : ""}>Solved paper</option><option value="chapter" ${item.type === "chapter" ? "selected" : ""}>Chapter material</option></select></div>
       <div class="field"><label for="material-subject">Subject *</label><input id="material-subject" name="subject_name" value="${escapeHtml(item.subject_name || "")}" required maxlength="80" placeholder="Biology"></div>
-      <div class="field"><label for="material-year">Year</label><input id="material-year" name="year" value="${escapeHtml(item.year || "")}" inputmode="numeric" pattern="\\d{4}" placeholder="2025"></div>
+      <div class="field"><label for="material-year">Year</label><input id="material-year" name="year" value="${escapeHtml(item.year || "")}" placeholder="2025 or 2025-26" pattern="\\d{4}(-\\d{2})?"><span class="field-hint">Enter one year (2025) or an academic year range (2025-26).</span></div>
       <div class="field"><label for="material-chapter">Chapter slug (for class pages)</label><input id="material-chapter" name="chapter_slug" value="${escapeHtml(item.chapter_slug || "")}" placeholder="chapter-1" maxlength="80"></div>
       <div class="field full"><label for="material-description">Description *</label><textarea id="material-description" name="description" required maxlength="2000">${escapeHtml(item.description || "")}</textarea></div>
       <div class="field full"><label for="material-file">Upload PDF (optional)</label><input id="material-file" name="pdf_file" type="file" accept="application/pdf,.pdf"><span class="field-hint">Maximum 25 MB. Upload requires Supabase configuration. In local demo mode, paste an HTTPS file link below instead.</span>${item.file_url ? `<span class="field-hint">Current file: <a class="text-link" href="${escapeHtml(item.file_url)}" target="_blank" rel="noopener noreferrer">Open current PDF ↗</a></span>` : ""}</div>
@@ -991,11 +1049,11 @@ function adminListMarkup() {
 }
 
 function notFoundPage() {
-  return `<div class="container page-content">${breadcrumb([{ label: "Page not found" }])}${emptyState("We couldn’t find that page", "The link may be out of date. Browse the classes and exams below to find the material you need.")}<section class="section"><div class="category-grid">${activeCategories().map(categoryCard).join("")}</div></section></div>`;
+  return `<div class="container page-content">${breadcrumb([{ label: "Page not found" }])}${emptyState("We couldn’t find that page", "The link may be out of date. Browse the classes and exams below to find the material you need.")}<section class="section"><div class="category-grid">${visibleCategories().map(categoryCard).join("")}</div></section></div>`;
 }
 
 function errorPage() {
-  return `<div class="container page-content">${breadcrumb([{ label: "Something went wrong" }])}<div class="empty-state"><div class="empty-mark" aria-hidden="true">!</div><h1>We hit a temporary problem</h1><p>Please refresh the page or browse to a category. If the problem continues, contact the site owner.</p><button class="button button-primary" type="button" data-retry>Try again</button></div><section class="section"><div class="category-grid">${activeCategories().map(categoryCard).join("")}</div></section></div>`;
+  return `<div class="container page-content">${breadcrumb([{ label: "Something went wrong" }])}<div class="empty-state"><div class="empty-mark" aria-hidden="true">!</div><h1>We hit a temporary problem</h1><p>Please refresh the page or browse to a category. If the problem continues, contact the site owner.</p><button class="button button-primary" type="button" data-retry>Try again</button></div><section class="section"><div class="category-grid">${visibleCategories().map(categoryCard).join("")}</div></section></div>`;
 }
 
 function buildSeo(title, description, canonical, route, structuredData = null) {
@@ -1037,6 +1095,35 @@ function setMeta(name, content, attribute = "name") {
 function canonicalUrl(route) {
   const base = getSafeExternalUrl(config.websiteUrl) ? new URL(config.websiteUrl).origin : (location.protocol.startsWith("http") ? location.origin : "");
   return base ? `${base}${pathFor(route)}` : pathFor(route);
+}
+
+function categoryListingSeo(category, route, board = null) {
+  const parts = route.split("/").filter(Boolean);
+  const sectionIndex = board ? 2 : 1;
+  const section = parts[sectionIndex];
+  const sectionLabels = {
+    notes: "Study Notes",
+    "short-notes": "Short Notes",
+    pyqs: "Previous Year Questions",
+    chapter: "Chapter Resources",
+    chapters: "Chapter Resources",
+    "model-paper": "Model Question Papers",
+    "model-question-paper": "Model Question Papers",
+    "model-papers": "Model Question Papers"
+  };
+  const label = sectionLabels[section] || "Study Materials";
+  const nextPart = parts[sectionIndex + 1];
+  const year = /^(\d{4}|\d{4}-\d{2})$/.test(nextPart || "") ? nextPart : "";
+  const subjectSlug = year ? parts[sectionIndex + 2] : nextPart;
+  const subject = subjectSlug && subjectSlug !== "all-years"
+    ? subjectSlug.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
+    : "";
+  const prefix = [board?.name, category.title].filter(Boolean).join(" ");
+  const focus = [subject, prefix, label, year].filter(Boolean).join(" ");
+  return {
+    title: `${focus} | Study Hub Junction`,
+    description: `Explore ${focus.toLowerCase()} with organised, easy-to-access learning resources on Study Hub Junction.`
+  };
 }
 
 function pageData(route) {
@@ -1093,7 +1180,7 @@ function pageData(route) {
   if (boardRoute && boardRoute.parts.length && categoryBySlug.has(boardRoute.parts[0])) {
     const category = categoryBySlug.get(boardRoute.parts[0]);
     const html = categoryPage(category, route);
-    return { html, title: `${boardRoute.board.name} ${category.title} study material`, description: `Browse ${boardRoute.board.name} ${category.title} notes, PYQs and chapters.`, route };
+    return { html, ...categoryListingSeo(category, route, boardRoute.board), route };
   }
   if (boardRoute && boardRoute.parts.length === 0) {
     return { html: boardsPage(boardRoute.board), title: `${boardRoute.board.name} study materials`, description: boardRoute.board.description, route };
@@ -1101,6 +1188,7 @@ function pageData(route) {
   if (parts.length && categoryBySlug.has(parts[0])) {
     const category = categoryBySlug.get(parts[0]);
     const html = categoryPage(category, route);
+    const metadata = categoryListingSeo(category, route);
     const structured = {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -1109,7 +1197,7 @@ function pageData(route) {
         { "@type": "ListItem", position: 2, name: category.title, item: canonicalUrl(`/${category.slug}`) }
       ]
     };
-    return { html, title: `${category.title} study material`, description: category.description, route, structured };
+    return { html, ...metadata, route, structured };
   }
   if (policyContent[route.slice(1)]) {
     const key = route.slice(1);
@@ -1207,6 +1295,8 @@ function slugForMaterial(fields) {
   const prefix = fields.board_slug ? `/${fields.board_slug}` : "";
   if (fields.type === "chapter" && fields.chapter_slug) return `${prefix}/${category}/${subject}/${makeSlug(fields.chapter_slug)}`;
   if (fields.type === "pyqs") return `${prefix}/${category}/pyqs/${fields.year || "all-years"}/${subject}`;
+  if (fields.type === "model-paper") return `${prefix}/${category}/model-question-paper/${fields.year || "all-years"}/${subject}`;
+  if (fields.type === "solved-paper") return `${prefix}/${category}/solved-paper/${fields.year || "all-years"}/${subject}`;
   return `${prefix}/${category}/${fields.type}/${subject}`;
 }
 
@@ -1224,13 +1314,20 @@ function updateGeneratedPath(form) {
   if (label) label.textContent = slugForMaterial(fields);
 }
 
+function normaliseYearValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (/^\d{4}(?:-\d{2})?$/.test(text)) return text;
+  throw new Error("Enter a year like 2025 or an academic year like 2025-26.");
+}
+
 function formPayload(form) {
   const values = new FormData(form);
   const category_slug = String(values.get("category_slug") || "");
   const board_slug = String(values.get("board_slug") || "") || null;
   const type = String(values.get("type") || "notes");
   const subject_name = String(values.get("subject_name") || "").trim();
-  const yearString = String(values.get("year") || "").trim();
+  const yearString = normaliseYearValue(values.get("year"));
   const chapter_slug = String(values.get("chapter_slug") || "").trim();
   const file_url = String(values.get("file_url") || "").trim();
   const thumbnail_url = String(values.get("thumbnail_url") || "").trim();
@@ -1239,7 +1336,6 @@ function formPayload(form) {
   if (!subject_name || !String(values.get("title") || "").trim() || !String(values.get("description") || "").trim()) {
     throw new Error("Title, subject and description are required.");
   }
-  if (yearString && !/^\d{4}$/.test(yearString)) throw new Error("Enter a four-digit year.");
   if ((file_url && !getSafeExternalUrl(file_url)) || (thumbnail_url && !getSafeExternalUrl(thumbnail_url))) {
     throw new Error("File and thumbnail links must use HTTPS.");
   }
@@ -1258,7 +1354,7 @@ function formPayload(form) {
     type,
     subject_name,
     subject_slug: makeSlug(subject_name),
-    year: yearString ? Number(yearString) : null,
+    year: yearString,
     chapter_slug: chapter_slug ? makeSlug(chapter_slug) : null,
     title: String(values.get("title")).trim(),
     description: String(values.get("description")).trim(),
@@ -1380,7 +1476,7 @@ async function signIn(form) {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
   if (config.adminEmail && email.toLowerCase() !== config.adminEmail.toLowerCase()) {
-    throw new Error("This email does not match the configured admin email.");
+    throw new Error("This email does not match the configured admin email. Use the admin account for this deployment.");
   }
   let response;
   try {

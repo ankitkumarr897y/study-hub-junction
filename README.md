@@ -60,12 +60,17 @@ Use the material slug as the path after your deployed site URL:
 | Board → CBSE → Class 10 → PYQs → 2025 → Maths | `/cbse/class-10/pyqs/2025/maths` |
 | Board → JAC Board → Class 10 → Notes → Science | `/jac-board/class-10/notes/science` |
 | NEET → PYQs → 2025 → Biology | `/neet/pyqs/2025/biology` |
+| JEE Main → Short Notes → Physics | `/jee-main/short-notes` (section listing) |
+| JEE Advanced → Short Notes → Chemistry | `/jee-advanced/short-notes` (section listing) |
+| NEET → Short Notes → Biology | `/neet/short-notes` (section listing) |
 | JEE Main → PYQs → 2025 → Physics | `/jee-main/pyqs/2025/physics` |
 | JEE Main → Notes → Physics | `/jee-main/notes/physics` |
+| CBSE → Class 10 → Model Papers → 2026 → Maths | `/cbse/class-10/model-question-paper/2026/maths` |
+| CBSE → Class 10 → Model Papers → 2025-26 → Maths | `/cbse/class-10/model-question-paper/2025-26/maths` |
 | Class 10 → Maths → Chapter 1 | `/class-10/maths/chapter-1` |
 | SSC → PYQs → 2025 | `/ssc/pyqs/2025` (a category/year listing) |
 
-For a new material, the admin dashboard generates its URL from category, material type, year, subject and chapter. `slug` is unique in the database. The bot only needs to send `https://YOUR-SITE/<slug>`; it does not need to host the PDF or reproduce the material.
+For a new material, the admin dashboard generates its URL from category, material type, year, subject and chapter. Enter either a calendar year (`2025`) or academic year (`2025-26`); both are preserved in the database and permanent URL. Choose **Short notes** as a separate material type for JEE Main, JEE Advanced and NEET; choose **Model question paper** for board resources. Run the latest `supabase/schema.sql` once after deploying schema changes so Supabase accepts these material types and academic-year strings. `slug` is unique in the database. The bot only needs to send `https://YOUR-SITE/<slug>`; it does not need to host the PDF or reproduce the material.
 
 ## Free hosted database and secure admin
 

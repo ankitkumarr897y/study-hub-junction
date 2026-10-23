@@ -45,8 +45,8 @@ create table if not exists public.materials (
   subject_slug text not null,
   subject_name text not null,
   chapter_slug text,
-  type text not null check (type in ('notes', 'pyqs', 'chapter')),
-  year integer check (year is null or year between 1900 and 2200),
+  type text not null check (type in ('notes', 'short-notes', 'pyqs', 'chapter', 'model-paper', 'solved-paper')),
+  year text check (year is null or year ~ '^[0-9]{4}(-[0-9]{2})?$'),
   slug text not null unique check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$'),
   title text not null check (length(trim(title)) between 1 and 180),
   description text not null check (length(trim(description)) between 1 and 2000),
@@ -126,6 +126,18 @@ alter table public.materials
   add column if not exists search_document tsvector;
 alter table public.materials
   add column if not exists board_slug text references public.boards(slug) on delete restrict;
+
+alter table public.materials drop constraint if exists materials_year_check;
+alter table public.materials drop constraint if exists materials_year_format_check;
+alter table public.materials alter column year type text using year::text;
+alter table public.materials
+  add constraint materials_year_format_check
+  check (year is null or year ~ '^[0-9]{4}(-[0-9]{2})?$');
+
+alter table public.materials drop constraint if exists materials_type_check;
+alter table public.materials
+  add constraint materials_type_check
+  check (type in ('notes', 'short-notes', 'pyqs', 'chapter', 'model-paper', 'solved-paper'));
 
 create or replace function public.set_material_search_document()
 returns trigger

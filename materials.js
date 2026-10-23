@@ -40,6 +40,12 @@ export function materialPath(material) {
   if (material.type === "pyqs") {
     return `${boardPrefix}/${category}/pyqs/${material.year || "all-years"}${subject ? `/${subject}` : ""}`;
   }
+  if (material.type === "model-paper") {
+    return `${boardPrefix}/${category}/model-question-paper/${material.year || "all-years"}${subject ? `/${subject}` : ""}`;
+  }
+  if (material.type === "solved-paper") {
+    return `${boardPrefix}/${category}/solved-paper/${material.year || "all-years"}${subject ? `/${subject}` : ""}`;
+  }
   return `${boardPrefix}/${category}/${material.type || "notes"}/${subject}`;
 }
 

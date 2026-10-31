@@ -5,7 +5,7 @@ A mobile-first study-material site for Classes 9–12, JEE Main/Advanced, NEET a
 ## Architecture
 
 - **Website:** dependency-free HTML, CSS and browser JavaScript. No build step, paid theme, framework download or secret in the browser.
-- **Website hosting:** the public site is configured at `https://study-hub-junction.vercel.app`. `vercel.json` sends direct SPA routes to `index.html` so material links return the app instead of an HTTP 404. The included GitHub Pages workflow remains an optional alternative.
+- **Website hosting:** the public site is configured at `https://study-hub-junction-eight.vercel.app/`. `vercel.json` sends direct SPA routes to `index.html` so material links return the app instead of an HTTP 404. The included GitHub Pages workflow remains an optional alternative.
 - **Persistent database and admin sign-in:** Supabase free tier (PostgreSQL + Auth + Row Level Security). You can preview the whole site before connecting Supabase.
 - **Local preview:** a tiny PowerShell static-file server, included in `scripts/preview.ps1`.
 - **Materials:** public pages show only published database rows. Drafts and admin CRUD require a signed-in account whose protected `app_metadata.role` is `admin`.
@@ -142,7 +142,7 @@ The included listings are **sample placeholders**, not a collection of redistrib
 ## SEO and hosting notes
 
 - Clean direct paths, per-page title/description/canonical/Open Graph metadata and educational/breadcrumb structured data are set for the currently displayed route.
-- `robots.txt` and `sitemap.xml` use the current `https://study-hub-junction.vercel.app` domain. `sitemap.xml` is a static file: add newly published material paths there when you want them listed explicitly.
+- `robots.txt` and `sitemap.xml` use the current `https://study-hub-junction-eight.vercel.app/` domain. `sitemap.xml` is a static file: add newly published material paths there when you want them listed explicitly.
 - Vercel's `vercel.json` rewrite serves the SPA shell for direct material URLs; the GitHub Pages 404 handoff remains available for that optional host. This app renders route content and metadata in the browser, not on the server, so it is not equivalent to server-side rendering.
 - `/admin` is hidden from navigation, disallowed in `robots.txt`, and marked `noindex`; admin access still requires Supabase Auth and RLS. Search is marked `noindex`; missing paths show a useful 404; runtime errors have a recovery page at `/error`.
 - Page metadata, mobile navigation, image loading, responsive layouts and content links work without an external UI library or font download.

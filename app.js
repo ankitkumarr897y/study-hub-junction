@@ -25,6 +25,7 @@ let remoteError = "";
 let adminUser = null;
 let adminMaterials = [];
 let adminMaterialsLoaded = false;
+let lastAnalyticsPage = "";
 const categoryPageCache = new Map();
 const searchResultCache = new Map();
 const routeLoadsInFlight = new Set();
@@ -968,7 +969,7 @@ const policyContent = {
   "privacy-policy": {
     title: "Privacy policy",
     description: "How this website handles information.",
-    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy. If you post material feedback, your comment, optional display name and submission time are stored with that material and shown publicly. Ratings are stored with the material and included in its public average.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes and to remember whether this device has rated a PDF. It does not use these features to track students across websites.</p><h2>Advertising</h2><p>This site loads Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads, subject to their policies and applicable consent requirements. Learn more in <a class="text-link" href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google's advertising policy ↗</a>.</p><h2>Your choices</h2><p>Do not include private or sensitive information in a public comment. You can clear site data in your browser settings. For privacy questions or to request removal of a comment, contact the site owner using the configured contact details.</p>`
+    body: `<h2>Information and search</h2><p>In demo mode, search runs in your browser. With Supabase configured, search queries are sent to the site's database to return published materials. Admin sign-in and published study material are processed by Supabase according to its privacy policy. If you post material feedback, your comment, optional display name and submission time are stored with that material and shown publicly. Ratings are stored with the material and included in its public average.</p><h2>Analytics</h2><p>This site uses Google Analytics to measure visits and understand how visitors use the site. Google may collect usage and device information through cookies or similar technologies. Learn more in <a class="text-link" href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google's Privacy Policy ↗</a> and review applicable consent requirements for your region.</p><h2>Cookies and local storage</h2><p>The site uses browser session storage for a signed-in admin session and local storage for local demo changes and to remember whether this device has rated a PDF. Analytics and advertising technologies may also use cookies or similar technologies.</p><h2>Advertising</h2><p>This site loads Google AdSense. Google and its partners may use cookies or similar technologies to serve and measure ads, subject to their policies and applicable consent requirements. Learn more in <a class="text-link" href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener noreferrer">Google's advertising policy ↗</a>.</p><h2>Your choices</h2><p>Do not include private or sensitive information in a public comment. You can clear site data in your browser settings. For privacy questions or to request removal of a comment, contact the site owner using the configured contact details.</p>`
   },
   terms: {
     title: "Terms & conditions",
@@ -1265,6 +1266,15 @@ function render() {
   document.querySelector(".main-nav")?.classList.remove("open");
   document.querySelector(".menu-toggle")?.setAttribute("aria-expanded", "false");
   buildSeo(page.title, page.description, canonicalUrl(page.route), page.route, page.structured);
+  const analyticsPage = `${location.pathname}${location.search}`;
+  if (analyticsPage !== lastAnalyticsPage && typeof window.gtag === "function") {
+    lastAnalyticsPage = analyticsPage;
+    window.gtag("event", "page_view", {
+      page_title: document.title,
+      page_location: location.href,
+      page_path: analyticsPage
+    });
+  }
   renderFooter();
   applyBranding();
   bindAdminEvents();

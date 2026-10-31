@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /admin
-Sitemap: https://study-hub-junction.vercel.app/sitemap.xml
+Sitemap: https://study-hub-junction-eight.vercel.app/sitemap.xml

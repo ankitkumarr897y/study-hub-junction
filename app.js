@@ -1066,9 +1066,12 @@ function buildSeo(title, description, canonical, route, structuredData = null) {
   setMeta("og:site_name", name, "property");
   setMeta("og:type", structuredData?.["@type"] === "LearningResource" ? "article" : "website", "property");
   setMeta("twitter:title", document.title);
+  setMeta("twitter:description", description);
   setMeta("og:url", canonical, "property");
   const origin = getSafeExternalUrl(config.websiteUrl) ? new URL(config.websiteUrl).origin : location.origin;
-  setMeta("og:image", `${origin}${pathFor("/assets/study-hub-logo.jpg")}`, "property");
+  const image = `${origin}${pathFor("/assets/study-hub-logo.jpg")}`;
+  setMeta("og:image", image, "property");
+  setMeta("twitter:image", image);
   setMeta("robots", routeIsPrivate(route) ? "noindex,follow" : "index,follow");
   const canonicalLink = document.querySelector('link[rel="canonical"]');
   if (canonicalLink) canonicalLink.href = canonical;

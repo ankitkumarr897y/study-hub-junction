@@ -1,152 +1,82 @@
-# Study Hub Junction
+# Study Hub Junction — Vercel-ready Website Pack
 
-A mobile-first study-material site for Classes 9–12, JEE Main/Advanced, NEET and SSC. Its permanent, predictable material links are designed to be sent directly by a Telegram bot.
+Ye ZIP rebuilt Study Hub Junction website ka hai — naya premium UI,
+client ka chuna hua Option 3 Junction logo, Hero Option 3 Minimal
+Growth visual, llms.txt, Open Graph, sitemap, robots aur Bing
+verification ke saath. Ye ek dusre client ki website hai (Apna School
+se alag).
 
-## Architecture
+## ZIP ke andar kya hai
 
-- **Website:** dependency-free HTML, CSS and browser JavaScript. No build step, paid theme, framework download or secret in the browser.
-- **Website hosting:** the public site is configured at `https://study-hub-junction-eight.vercel.app/`. `vercel.json` sends direct SPA routes to `index.html` so material links return the app instead of an HTTP 404. The included GitHub Pages workflow remains an optional alternative.
-- **Persistent database and admin sign-in:** Supabase free tier (PostgreSQL + Auth + Row Level Security). You can preview the whole site before connecting Supabase.
-- **Local preview:** a tiny PowerShell static-file server, included in `scripts/preview.ps1`.
-- **Materials:** public pages show only published database rows. Drafts and admin CRUD require a signed-in account whose protected `app_metadata.role` is `admin`.
-- **Scalability:** category/subject/chapter/material tables, indexed fields and direct slugs are in `supabase/schema.sql`; server-side search is backed by a Postgres RPC. Static hosting has no server process.
+- `index.html` — poori website (root par). Ye self-contained hai:
+  CSS aur JavaScript isi file ke andar hain, isliye ye akele hi chalti hai.
+- `assets/` — saari assets:
+  - `assets/logo.png` — chuna hua Option 3 Junction logo (neele, hare
+    aur narangi rangon wali khuli kitab ka junction mark, neeche
+    "study hub junction" dark blue me, 1600 × 1600). Yehi header, hero,
+    footer, favicon aur share (Open Graph) image hai.
+  - `assets/hero.png` — chuna hua Hero Option 3 Minimal Growth visual
+    (kitabon ka stack aur upar badhta hua teer with graduation cap).
+    Yehi home page ke hero section me dikhta hai.
+  - `assets/logo-option1.png` — Logo Option 1 (Minimal: kitab + cap).
+  - `assets/logo-option2.png` — Logo Option 2 (Shield crest).
+  - `assets/logo-redesigned.png` — pichla redesigned logo (cap + book).
+  - `assets/logo.svg` — pichle redesigned logo ka vector version.
+  - `assets/study-hub-logo.jpg` — purana original circular logo.
+    Admin panel me "Restore original" dabane par yehi logo wapas aata hai.
+  - `assets/llms.txt`, `assets/sitemap.xml`, `assets/robots.txt`,
+    `assets/BingSiteAuth.xml` — SEO files (inki copy ZIP ke root par bhi hai,
+    kyunki search engines inhe root par dhundhte hain).
+- `llms.txt`, `sitemap.xml`, `robots.txt`, `BingSiteAuth.xml` — root copies.
+- `404.html` — galat / purane link ke liye not-found page.
+- `styles.css`, `app.js`, `config.js`, `materials.js` — index.html ke andar
+  wale CSS/JS ki alag copies, sirf reference aur alag editing ke liye.
+  Inhe index.html me dobara link/load MAT karna — code pehle se index.html
+  ke andar chalta hai, dobara load karne se do baar chalega.
+- `README.md` — ye file.
 
-### Database schema
+## Deploy kaise karein (GitHub + Vercel)
 
-`categories` → `subjects` → `chapters` → `materials`, with foreign keys and unique URL slugs. Material rows include year, title, description, file/thumbnail URLs, tags, publication status, source/permission status and SEO title/description. Admin identities and password hashes are managed by Supabase Auth; passwords are never stored in this site. Indexes cover category/year/tag/search use. Row Level Security makes published resources readable and limits writes and draft visibility to admins.
+1. ZIP ko kholo (extract karo).
+2. Andar ki SAARI files aur `assets` folder ko apne GitHub repo ke
+   ROOT par upload karo. Dhyaan: ZIP file khud upload nahi karni,
+   uske andar ki files upload karni hain. `index.html` repo ke root
+   par hona chahiye.
+3. Vercel par usi repo ko import / deploy karo:
+   - Framework Preset: **Other**
+   - Build Command: **khaali chhodo** (empty)
+   - Output / Install settings: default rehne do, koi install step nahi hai.
+4. Deploy hone ke baad site live ho jayegi. Koi `package.json`,
+   server code ya `node_modules` is pack me nahi hai — ye 100% static hai.
 
-## Folder structure
+## Bing Webmaster Tools verification (client ko khud karna hai)
 
-```text
-StudyHubJunction/
-├── index.html                 App shell and global metadata
-├── 404.html                   GitHub Pages deep-link handoff
-├── vercel.json                Direct-route fallback for Vercel
-├── app.js                     Routing, search, material pages and admin UI
-├── materials.js               Demo content and predictable slug helpers
-├── config.js                  Public website/Telegram/Supabase configuration
-├── styles.css                 Responsive mobile-first styles
-├── assets/study-hub-logo.jpg  Optimized supplied Study Hub Junction logo
-├── RUN-LOCAL.bat              Double-click local preview launcher
-├── supabase/schema.sql        Tables, indexes, RLS, seed categories and drafts
-├── scripts/preview.ps1        Local static preview server (Windows)
-├── .github/workflows/pages.yml
-├── robots.txt
-└── sitemap.xml
-```
+Is pack me Bing ka koi asli code NAHI dala gaya hai — placeholder hai.
+Client ko apna code khud dalna hoga:
 
-## Run it locally (Windows)
+- Option A (meta tag): Bing Webmaster Tools > Settings > Verify ownership
+  se code copy karo, phir `index.html` me ye line dhundho:
+  `PASTE_YOUR_BING_VERIFICATION_CODE_HERE`
+  aur uski jagah apna code paste karke dobara deploy karo.
+- Option B (XML file): Bing se mili code ko `BingSiteAuth.xml`
+  (root wali aur `assets/BingSiteAuth.xml` dono) me
+  `PASTE_YOUR_BING_CODE_HERE` ki jagah paste karo.
 
-Either double-click `RUN-LOCAL.bat`, or:
+Ek hi option kaafi hai. Code paste karne ke baad Bing me "Verify" dabao.
 
-1. Open PowerShell in this folder and run:
+## Dhyaan dene wali baatein
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\scripts\preview.ps1
-   ```
-
-2. Open **http://localhost:4173/** in a browser.
-3. The public site has no Admin link. `/admin` requires the configured Supabase connection and an authenticated administrator; admin editing is deliberately disabled in local demo mode. The homepage has suggested searches; search ranks close matches by title, subject, class/exam, board, year and material type.
-4. Stop the preview with **Ctrl+C** in its PowerShell window.
-
-The supplied logo image is included as a 512px optimized JPEG in `assets/study-hub-logo.jpg` (about 70 KB) for social previews. On-screen branding uses an inline vector mark, so the header and homepage logo still appear if an image asset is unavailable. When Supabase is configured, the page shell renders immediately and categories, boards, materials and admin status load in parallel. No Node.js, npm, Python, package install or payment is needed to preview the demo.
-
-## Direct links for the Telegram bot
-
-Use the material slug as the path after your deployed site URL:
-
-| Telegram selection | Website path |
-|---|---|
-| Board → CBSE → Class 10 → PYQs → 2025 → Maths | `/cbse/class-10/pyqs/2025/maths` |
-| Board → JAC Board → Class 10 → Notes → Science | `/jac-board/class-10/notes/science` |
-| NEET → PYQs → 2025 → Biology | `/neet/pyqs/2025/biology` |
-| JEE Main → Short Notes → Physics | `/jee-main/short-notes` (section listing) |
-| JEE Advanced → Short Notes → Chemistry | `/jee-advanced/short-notes` (section listing) |
-| NEET → Short Notes → Biology | `/neet/short-notes` (section listing) |
-| JEE Main → PYQs → 2025 → Physics | `/jee-main/pyqs/2025/physics` |
-| JEE Main → Notes → Physics | `/jee-main/notes/physics` |
-| CBSE → Class 10 → Model Papers → 2026 → Maths | `/cbse/class-10/model-question-paper/2026/maths` |
-| CBSE → Class 10 → Model Papers → 2025-26 → Maths | `/cbse/class-10/model-question-paper/2025-26/maths` |
-| Class 10 → Maths → Chapter 1 | `/class-10/maths/chapter-1` |
-| SSC → PYQs → 2025 | `/ssc/pyqs/2025` (a category/year listing) |
-
-For a new material, the admin dashboard generates its URL from category, material type, year, subject and chapter. Enter either a calendar year (`2025`) or academic year (`2025-26`); both are preserved in the database and permanent URL. Choose **Short notes** as a separate material type for JEE Main, JEE Advanced and NEET; choose **Model question paper** for board resources. Run the latest `supabase/schema.sql` once after deploying schema changes so Supabase accepts these material types and academic-year strings. `slug` is unique in the database. The bot only needs to send `https://YOUR-SITE/<slug>`; it does not need to host the PDF or reproduce the material.
-
-## Free hosted database and secure admin
-
-1. For the current Vercel site, connect the project repository to Vercel or redeploy the updated project files; include `vercel.json` from the project root. The SPA rewrite is needed so a Telegram deep link such as `/neet/pyqs/2025/biology` returns the app directly. If you instead use GitHub Pages, create a **public GitHub repository** named `StudyHubJunction` and upload the contents of this folder to the repository root. Include the hidden `.github` folder (especially `.github/workflows/pages.yml`) and `.nojekyll`; if using Windows File Explorer, enable **View → Show → Hidden items** before selecting the files.
-2. **GitHub Pages alternative only:** open **Settings → Pages**, choose **GitHub Actions** as the source. Push to `main`; `.github/workflows/pages.yml` deploys the site. Wait for the Pages deployment link to appear in Actions.
-3. Create a Supabase project on its free tier. In **SQL Editor**, run [`supabase/schema.sql`](./supabase/schema.sql). It creates the database, RLS policies, school-board registry, categories, feedback tables and unpublished example drafts. If you previously ran an older version, run the entire updated schema again; it adds the board table, optional `board_slug` column and feedback support while preserving existing materials. If you previously saw `generation expression is not immutable`, the current schema uses a trigger-maintained full-text search column instead.
-4. In Supabase Auth, create your own admin user and turn off public sign-ups. In SQL Editor, assign the protected admin claim to that exact email (replace the example):
-
-   ```sql
-   update auth.users
-   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
-   where email = 'you@example.com';
-   ```
-
-   Sign in again after assigning the role so Supabase issues a token with the updated claim.
-5. In `config.js`, fill in `websiteUrl`, `supabaseUrl`, `supabaseAnonKey` and `adminEmail`. For a repository named `StudyHubJunction` at `https://USERNAME.github.io/StudyHubJunction/`, set:
-
-   ```js
-   websiteUrl: "https://USERNAME.github.io/StudyHubJunction",
-   basePath: "/StudyHubJunction",
-   ```
-
-   Also leave the repository name in `repositoryBase` in `404.html` and the matching base-path check near the top of `index.html` as `/StudyHubJunction`. For a custom domain or `USERNAME.github.io` root site, use `basePath: ""` and set `repositoryBase` to an unused path such as `/unused-repository`.
-6. Commit `config.js` and push. Supabase's **anon/publishable** key is intended for public browser use; the SQL policies protect the database. **Never put the Supabase service-role key, database password or an admin password in this repository.** The configured admin email is public and is not an authorization boundary; Auth + RLS are.
-7. Open `/admin` directly, sign in and add categories/materials. This address is intentionally not linked from public navigation, but the real access control is Supabase Auth and Row Level Security—not the hidden URL. A material's subject and optional chapter rows are created as needed. The database and admin changes persist across browsers.
-
-### Upload a PYQ PDF
-
-1. Finish the Supabase setup above and sign in to `/admin` with the authorised admin account. File uploads are not available in browser-only demo mode.
-2. In **Add a study material**, select the exam/class, choose **Previous year questions**, then enter its subject, year and description.
-3. Under **Upload PDF**, select a PDF (maximum 25 MB). The app uploads it into the `study-materials` Supabase Storage bucket and saves its public URL with the material. Or paste a direct HTTPS file URL instead.
-4. Set the **Source / redistribution permission** correctly and enter the source/licence/permission details. Only then can you publish the material.
-5. The dashboard generates its permanent URL automatically. For example, NEET → PYQs → 2025 → Biology is `/neet/pyqs/2025/biology`. Copy that page URL and send it from your Telegram bot.
-
-The bucket and its access policies are created by `supabase/schema.sql`; run the updated SQL in Supabase SQL Editor before uploading. PDF downloads are public to visitors, but only an authenticated admin can upload or remove stored files. Replacing a PDF cleans up the previous file after the updated record saves.
-
-### Student comments and ratings
-
-Run the latest [`supabase/schema.sql`](./supabase/schema.sql) in Supabase SQL Editor to enable feedback. On a material page, students can use **Comment** to jump to the comment form; comments are shown publicly as soon as submitted. The rating form appears after the student clicks **Download PDF**. The site cannot verify that an external download finished, so the prompt follows the download click. Ratings are limited to one per browser/device using local storage; this is a convenience check, not a fraud-proof identity system. Names are optional. Comments and ratings are attached to the material and disappear if that material is deleted.
-
-Material pages provide a direct PDF download and no longer embed or link to an in-page PDF preview.
-
-## Telegram bot
-
-The ready-to-run Windows bot is in [`telegram-bot/`](./telegram-bot/). Follow its [step-by-step setup guide](./telegram-bot/README.md): it uses buttons for boards/classes/exams, PYQ years, subjects, chapters, latest materials and search, then sends students straight to the matching website material page. It reads only published Supabase rows with an HTTPS file URL; add/publish materials through `/admin` to make them appear. Category menus fetch only matching rows, search uses the database search function, and repeated selections are cached briefly. Keep the BotFather token in the ignored `telegram-bot/.env` file and never upload/share it. The bot runs on your computer while it is on; Vercel/GitHub Pages only host the website.
-
-Supabase's free-tier limits and availability can change. No service is guaranteed to remain free forever. A custom domain, if you buy one, costs extra; a default GitHub Pages URL does not.
-
-## Configuration
-
-`config.js` is the actual configuration used by this no-build static site. `.env.example` lists the equivalent requested setting names for reference; GitHub Pages cannot read server environment variables because it does not run an application server.
-
-| Setting | Purpose |
-|---|---|
-| `websiteName` / `WEBSITE_NAME` | Display name and page titles |
-| `websiteUrl` / `WEBSITE_URL` | Public site URL used for canonical metadata |
-| `telegramUrl` / `TELEGRAM_URL` | Configurable Telegram bot destination |
-| `telegramChannelUrl` | Telegram channel destination |
-| `adminEmail` / `ADMIN_EMAIL` | Restricts the sign-in form to the intended email; RLS still enforces admin access |
-| `supabaseUrl`, `supabaseAnonKey` | Public Supabase endpoint and publishable/anon key |
-| `basePath` | Repository prefix for GitHub Pages project sites; blank for root/custom domains |
-
-Only non-secret values belong in `config.js`. The Google AdSense loader remains in `index.html`; the site does not show placeholder ad boxes.
-
-## Copyright, files and publishing
-
-The included listings are **sample placeholders**, not a collection of redistributable PDFs. The database seed examples are unpublished. Upload only a file that you own or have permission/licence to distribute. Before publishing, choose **Original work**, **Licensed for distribution** or **Public domain**, and record the source/permission details. The app and database both reject publishing a `Not verified` resource. Do not assume that exam papers or third-party notes can be redistributed.
-
-## SEO and hosting notes
-
-- Clean direct paths, per-page title/description/canonical/Open Graph metadata and educational/breadcrumb structured data are set for the currently displayed route.
-- `robots.txt` and `sitemap.xml` use the current `https://study-hub-junction-eight.vercel.app/` domain. `sitemap.xml` is a static file: add newly published material paths there when you want them listed explicitly.
-- Vercel's `vercel.json` rewrite serves the SPA shell for direct material URLs; the GitHub Pages 404 handoff remains available for that optional host. This app renders route content and metadata in the browser, not on the server, so it is not equivalent to server-side rendering.
-- `/admin` is hidden from navigation, disallowed in `robots.txt`, and marked `noindex`; admin access still requires Supabase Auth and RLS. Search is marked `noindex`; missing paths show a useful 404; runtime errors have a recovery page at `/error`.
-- Page metadata, mobile navigation, image loading, responsive layouts and content links work without an external UI library or font download.
-
-## Pages and content
-
-Includes responsive home/category/material/search pages, breadcrumbs, related/previous/next materials, direct PDF upload to Supabase Storage or HTTPS link, PDF preview/view/download, Telegram links, local privacy/terms/disclaimer/about/contact pages, a 404 fallback, and an error recovery page. The legal pages are starter templates; adapt them to your real contact details, data practices and local laws before public launch.
+- Google verification, AdSense, GTM aur Analytics IDs pehle wale hi hain,
+  unhe badla nahi gaya hai.
+- Is pack me koi secret key nahi hai. `config.js` / `index.html` me jo
+  Supabase key hai wo sirf public (publishable/anon) key hai, jo browser
+  me chalne ke liye hoti hai — service-role / secret key kabhi is pack
+  me mat dalna.
+- Admin sign-in ke liye site owner ke apne Supabase admin account ki
+  zaroorat hoti hai; bina uske admin login test nahi hoga.
+- PDF download/preview tabhi chalega jab kisi material ke saath PDF
+  attach hoga (admin se add kiya hua).
+- Logo badalna ho to admin panel se hota hai — wahan 5 choices safe
+  hain: Junction (Option 3, abhi wala default), Option 1 Minimal,
+  Option 2 Shield, pichla redesigned logo, aur purana original
+  circular logo ("Restore original").

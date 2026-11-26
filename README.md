@@ -1,9 +1,11 @@
-# Study Hub Junction — Vercel-ready Website Pack (v3 — PDF Upload Button)
+# Study Hub Junction — Vercel-ready Website Pack (v4 — Secure Admin, No Preview Bypass)
 
 Ye ZIP current Study Hub Junction website ka fresh rebuild hai —
 naya premium UI, client ka chuna hua Option 3 Junction logo, Hero
-Option 3 Minimal Growth visual, AUR naya asli PDF upload button
-(admin material form me), llms.txt, Open Graph, sitemap, robots aur
+Option 3 Minimal Growth visual, asli PDF upload button
+(admin material form me), AUR secure admin — "Preview the manager
+in this tab" button aur uska poora bypass HATA diya gaya hai,
+llms.txt, Open Graph, sitemap, robots aur
 Bing verification ke saath. Ye ek dusre client ki website hai
 (Apna School se alag).
 
@@ -76,6 +78,17 @@ Dhyaan do:
   changes sirf usi tab me rehte hain, live nahi hote.
 - Licence (original / licensed / public_domain) chune bina material
   publish nahi hota.
+
+## Admin Security — Preview Bypass Hata Diya Gaya (NAYA v4 me)
+
+- Login page par ab **"Preview the manager in this tab" button NAHI hai**
+  aur uska poora bypass code bhi hata diya gaya hai.
+- `#/admin` ab **sirf Supabase admin sign-in ke baad** khulta hai —
+  bina signed-in admin ke manager open nahi hota.
+- **Save, publish/unpublish toggle aur delete** — teeno actions
+  bina signed-in admin ke **reject** ho jate hain. Bina login ke
+  koi bhi file access, upload, edit ya delete nahi kar sakta.
+- PDF upload ke liye bhi signed-in admin zaroori hai (neeche dekho).
 
 ## Bing Webmaster Tools verification (client ko khud karna hai)
 

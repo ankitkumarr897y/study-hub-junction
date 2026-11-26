@@ -526,13 +526,12 @@ function seoFilesPage(){
 }
 
 /* ================= Admin ================= */
-var sessionPreview = false;
 function healthRow(ok, title, desc){
   return '<div class="health-row"><span class="h-ic" style="color:' + (ok ? "var(--mint)" : "var(--gold-deep)") + '">' + (ok ? ICONS.check : ICONS.clock) + '</span><div><strong>' + esc(title) + '</strong><p>' + desc + '</p></div></div>';
 }
 function adminPage(){
   var user = state.adminUser;
-  var inManager = user || sessionPreview;
+  var inManager = !!user;
   var html = '<div class="container page-content">' + breadcrumbs([{label:"Admin"}]) +
     '<div class="page-heading"><span class="eyebrow">Site owner tools</span><h1>Material dashboard</h1><p>Add, update and manage study materials. New pages get predictable URLs automatically.</p></div>';
   if(state.adminError) html += '<div class="error-banner" role="alert">' + esc(state.adminError) + '</div>';
@@ -540,9 +539,8 @@ function adminPage(){
     html += '<div class="admin-layout"><section class="form-panel"><h2>Admin sign in</h2><p class="field-hint">Sign in with the administrator account configured in Supabase. Admin access is enforced by database policies.</p>' +
       '<form id="login-form"><div class="form-grid"><div class="field full"><label for="admin-email">Email</label><input id="admin-email" name="email" type="email" autocomplete="username" required></div>' +
       '<div class="field full"><label for="admin-password">Password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required></div></div>' +
-      '<div class="form-actions"><button class="btn btn-primary" type="submit">Sign in</button>' +
-      '<button class="btn btn-outline" type="button" data-session-preview>Preview the manager in this tab</button></div>' +
-      '<p class="field-hint" style="margin-top:10px">The preview manager runs only in this browser tab — materials you add there are not published until they are saved through the signed-in dashboard on the live site.</p></form></section>' +
+      '<div class="form-actions"><button class="btn btn-primary" type="submit">Sign in</button></div>' +
+      '<p class="field-hint" style="margin-top:10px">Only the signed-in admin account can open the manager, upload, edit or delete materials.</p></form></section>' +
       '<section class="form-panel"><h2>Site health</h2><div class="health-list">' +
       healthRow(true, "Google Search Console", "Verification tag connected — <code>9OMlhvTOkKKcQzEDEyai8x-kosGaONepYuMpAsrcFt4</code>") +
       healthRow(true, "Google Analytics + Tag Manager", "GA4 <code>G-7ERHRGQ8KY</code> · GTM <code>GTM-TCZ73NZS</code> · AdSense <code>ca-pub-8672957876641344</code>") +
@@ -553,7 +551,7 @@ function adminPage(){
       '</div></section></div>';
     return html;
   }
-  var toolbar = '<div class="admin-toolbar"><span class="field-hint">' + (user ? "Signed in as " + esc(user.email || "administrator") : "Session preview — changes stay in this tab only") + '</span><span style="display:flex;gap:8px;flex-wrap:wrap">' +
+  var toolbar = '<div class="admin-toolbar"><span class="field-hint">' + "Signed in as " + esc(user.email || "administrator") + '</span><span style="display:flex;gap:8px;flex-wrap:wrap">' +
     '<button class="btn btn-outline btn-sm" type="button" data-admin-refresh>Refresh list</button>' +
     '<button class="btn btn-outline btn-sm" type="button" data-admin-logout>Sign out</button></span></div>';
   html += toolbar + '<div class="admin-layout"><div>' +
@@ -841,8 +839,8 @@ function uploadPdfToStorage(file){
 function ensurePdfUploaded(){
   if(!pdfSelectedFile) return Promise.resolve("");
   if(pdfUploadedFor === pdfSelectedFile && pdfUploadedUrl) return Promise.resolve(pdfUploadedUrl);
-  if(!state.adminUser || sessionPreview || !state.adminSession){
-    return Promise.reject(new Error("PDF upload needs the signed-in admin account. Sign in on this page first — the tab preview cannot upload files."));
+  if(!state.adminUser || !state.adminSession){
+    return Promise.reject(new Error("PDF upload needs the signed-in admin account. Sign in on this page first."));
   }
   var problem = validatePdfFile(pdfSelectedFile);
   if(problem) return Promise.reject(new Error(problem));
@@ -939,28 +937,21 @@ function saveMaterialFromForm(form){
   var newPath = slugForFields({ category_slug: payload.category_slug, board_slug: payload.board_slug, type: payload.type, subject_name: payload.subject_name, year: payload.year, chapter_slug: payload.chapter_slug });
   var collision = state.materials.filter(function(m){ return materialPath(m) === newPath && m.id !== editId; })[0];
   if(collision) throw new Error("That URL is already in use. Choose a different subject or chapter.");
-  if(state.adminUser && !sessionPreview){
-    var body = JSON.stringify({
-      category_slug: payload.category_slug, board_slug: payload.board_slug, type: payload.type,
-      subject_name: payload.subject_name, subject_slug: payload.subject_slug, year: payload.year ? String(payload.year) : null,
-      chapter_slug: payload.chapter_slug, title: payload.title, description: payload.description,
-      file_url: payload.file_url || null, tags: payload.tags, license_status: payload.license_status,
-      license_note: "Added from redesigned dashboard", is_published: payload.is_published,
-      slug: newPath.replace(/^\//, "")
-    });
-    var req = editId
-      ? sbFetch("materials?id=eq." + encodeURIComponent(editId), { method: "PATCH", headers: { Prefer: "return=representation" }, body: body })
-      : sbFetch("materials", { method: "POST", headers: { Prefer: "return=representation" }, body: body });
-    return req.then(function(){ return hydrateFromSupabase(); });
+  if(!state.adminUser || !state.adminSession){
+    return Promise.reject(new Error("Sign in with the admin account to save materials."));
   }
-  if(editId){
-    state.materials = state.materials.map(function(m){ return m.id === editId ? Object.assign({}, m, payload) : m; });
-  } else {
-    payload.id = "local-" + Date.now();
-    payload.seo_title = ""; payload.seo_description = "";
-    state.materials.unshift(payload);
-  }
-  return Promise.resolve();
+  var body = JSON.stringify({
+    category_slug: payload.category_slug, board_slug: payload.board_slug, type: payload.type,
+    subject_name: payload.subject_name, subject_slug: payload.subject_slug, year: payload.year ? String(payload.year) : null,
+    chapter_slug: payload.chapter_slug, title: payload.title, description: payload.description,
+    file_url: payload.file_url || null, tags: payload.tags, license_status: payload.license_status,
+    license_note: "Added from redesigned dashboard", is_published: payload.is_published,
+    slug: newPath.replace(/^\//, "")
+  });
+  var req = editId
+    ? sbFetch("materials?id=eq." + encodeURIComponent(editId), { method: "PATCH", headers: { Prefer: "return=representation" }, body: body })
+    : sbFetch("materials", { method: "POST", headers: { Prefer: "return=representation" }, body: body });
+  return req.then(function(){ return hydrateFromSupabase(); });
 }
 function bindAdmin(){
   var login = $("#login-form");
@@ -977,7 +968,7 @@ function bindAdmin(){
       state.adminSession = session;
       return checkAdminUser();
     }).then(function(){
-      if(state.adminUser){ sessionPreview = false; toast("Signed in successfully."); }
+      if(state.adminUser){ toast("Signed in successfully."); }
       render();
     }).catch(function(err){
       state.adminError = "Could not sign in: " + err.message;
@@ -1065,11 +1056,10 @@ document.addEventListener("click", function(ev){
     return;
   }
   if(t.closest("[data-download]")){ toast("Your PDF download has started."); return; }
-  if(t.closest("[data-session-preview]")){ sessionPreview = true; state.adminError = ""; render(); return; }
-  if(t.closest("[data-admin-logout]")){ state.adminUser = null; state.adminSession = null; sessionPreview = false; render(); toast("Signed out."); return; }
+  if(t.closest("[data-admin-logout]")){ state.adminUser = null; state.adminSession = null; render(); toast("Signed out."); return; }
   if(t.closest("[data-admin-refresh]")){
-    if(state.adminUser && !sessionPreview){ hydrateFromSupabase().then(function(){ toast("Material list refreshed."); }); }
-    else { adminListMarkup(); toast("Material list refreshed."); }
+    if(state.adminUser){ hydrateFromSupabase().then(function(){ toast("Material list refreshed."); }); }
+    else { toast("Sign in with the admin account first.", true); }
     return;
   }
   if(t.closest("[data-logo-reset]")){ state.logoUrl = CONFIG.defaultLogo; applyLogo(); toast("Junction logo is now active."); return; }
@@ -1111,13 +1101,10 @@ document.addEventListener("click", function(ev){
     if(publish && ["original","licensed","public_domain"].indexOf(it2.license_status) === -1){
       toast("Verify distribution permission before publishing this material.", true); return;
     }
-    if(state.adminUser && !sessionPreview){
-      sbFetch("materials?id=eq." + encodeURIComponent(it2.id), { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ is_published: publish }) })
-        .then(function(){ return hydrateFromSupabase(); }).then(function(){ toast(publish ? "Material published." : "Material unpublished."); })
-        .catch(function(err){ toast(err.message, true); });
-    } else {
-      it2.is_published = publish; render(); toast(publish ? "Material published." : "Material unpublished.");
-    }
+    if(!state.adminUser){ toast("Sign in with the admin account first.", true); return; }
+    sbFetch("materials?id=eq." + encodeURIComponent(it2.id), { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ is_published: publish }) })
+      .then(function(){ return hydrateFromSupabase(); }).then(function(){ toast(publish ? "Material published." : "Material unpublished."); })
+      .catch(function(err){ toast(err.message, true); });
     return;
   }
   var delBtn = t.closest("[data-delete]");
@@ -1133,14 +1120,10 @@ document.addEventListener("click", function(ev){
   var conf = t.closest("[data-confirm-delete]");
   if(conf){
     var id = conf.getAttribute("data-confirm-delete");
-    if(state.adminUser && !sessionPreview){
-      sbFetch("materials?id=eq." + encodeURIComponent(id), { method: "DELETE" })
-        .then(function(){ return hydrateFromSupabase(); }).then(function(){ toast("Material deleted."); })
-        .catch(function(err){ toast(err.message, true); });
-    } else {
-      state.materials = state.materials.filter(function(m){ return m.id !== id; });
-      render(); toast("Material deleted.");
-    }
+    if(!state.adminUser){ toast("Sign in with the admin account first.", true); return; }
+    sbFetch("materials?id=eq." + encodeURIComponent(id), { method: "DELETE" })
+      .then(function(){ return hydrateFromSupabase(); }).then(function(){ toast("Material deleted."); })
+      .catch(function(err){ toast(err.message, true); });
   }
 });
 var menuToggle = document.getElementById("menu-toggle");

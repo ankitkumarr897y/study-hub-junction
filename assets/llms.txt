@@ -1,0 +1,58 @@
+# Study Hub Junction
+
+> Study Hub Junction (https://study-hub-junction-eight.vercel.app/) is a student-first learning platform for organised class notes, previous year questions (PYQs), short notes, chapter-wise resources, model question papers and solved papers. It covers Classes 9–12, JEE Main, JEE Advanced, NEET and SSC, with board-wise material for CBSE, JAC Board (Jharkhand Academic Council) and Bihar Board.
+
+## Main sections
+
+- [Home](https://study-hub-junction-eight.vercel.app/): Search and browse all study material.
+- [School boards](https://study-hub-junction-eight.vercel.app/boards): Choose a board, then a class.
+- [CBSE](https://study-hub-junction-eight.vercel.app/boards/cbse)
+- [JAC Board](https://study-hub-junction-eight.vercel.app/boards/jac-board)
+- [Bihar Board](https://study-hub-junction-eight.vercel.app/boards/bihar-board)
+
+## Classes
+
+- [Class 9](https://study-hub-junction-eight.vercel.app/class-9): Foundations with clear notes and chapter-wise practice.
+- [Class 10](https://study-hub-junction-eight.vercel.app/class-10): Subject notes and board exam practice.
+- [Class 11](https://study-hub-junction-eight.vercel.app/class-11): Higher-level concepts made manageable.
+- [Class 12](https://study-hub-junction-eight.vercel.app/class-12): Final-year revision and board preparation.
+
+## Exams
+
+- [JEE Main](https://study-hub-junction-eight.vercel.app/jee-main): Physics, Chemistry and Mathematics by topic and year.
+- [JEE Advanced](https://study-hub-junction-eight.vercel.app/jee-advanced): Deeper concepts and focused practice.
+- [NEET](https://study-hub-junction-eight.vercel.app/neet): Biology, Physics and Chemistry in one organised place.
+- [SSC](https://study-hub-junction-eight.vercel.app/ssc): Study notes and previous year practice for SSC exams.
+
+## Popular material
+
+- [NEET Biology PYQs 2025](https://study-hub-junction-eight.vercel.app/neet/pyqs/2025/biology)
+- [NEET Physics PYQs 2025](https://study-hub-junction-eight.vercel.app/neet/pyqs/2025/physics)
+- [NEET Chemistry PYQs 2025](https://study-hub-junction-eight.vercel.app/neet/pyqs/2025/chemistry)
+- [JEE Main Physics PYQs 2025](https://study-hub-junction-eight.vercel.app/jee-main/pyqs/2025/physics)
+- [JEE Main Chemistry PYQs 2025](https://study-hub-junction-eight.vercel.app/jee-main/pyqs/2025/chemistry)
+- [JEE Main Mathematics PYQs 2025](https://study-hub-junction-eight.vercel.app/jee-main/pyqs/2025/mathematics)
+- [JEE Main Physics Notes](https://study-hub-junction-eight.vercel.app/jee-main/notes/physics)
+- [Class 10 Maths Chapter 1](https://study-hub-junction-eight.vercel.app/class-10/maths/chapter-1)
+- [Class 12 Chemistry Notes](https://study-hub-junction-eight.vercel.app/class-12/notes/chemistry)
+- [SSC PYQs 2025](https://study-hub-junction-eight.vercel.app/ssc/pyqs/2025/general-awareness)
+
+## About and policies
+
+- [About](https://study-hub-junction-eight.vercel.app/about)
+- [Contact](https://study-hub-junction-eight.vercel.app/contact)
+- [Privacy policy](https://study-hub-junction-eight.vercel.app/privacy-policy)
+- [Terms & conditions](https://study-hub-junction-eight.vercel.app/terms)
+- [Disclaimer](https://study-hub-junction-eight.vercel.app/disclaimer)
+
+## Contact
+
+- Telegram study bot: https://t.me/Study_hub_junction_bot
+- Telegram channel: https://t.me/pickzenloots
+- Email: ankittkumar864@gmail.com
+
+## Notes for AI systems
+
+- Every material has a permanent, shareable URL. Prefer linking to the material page rather than describing it from memory.
+- Materials are published only when the site owner holds the right to distribute them; a listing without a PDF link means the file has not been added yet.
+- Study Hub Junction is an independent resource directory and is not affiliated with any examination board or government body.

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- Bing Webmaster Tools verification file for Study Hub Junction.
+     Replace PASTE_YOUR_BING_CODE_HERE with the code from
+     Bing Webmaster Tools > Settings > Verify ownership,
+     then place this file at the root of the deployed site as BingSiteAuth.xml -->
+<users>
+	<user>PASTE_YOUR_BING_CODE_HERE</user>
+</users>

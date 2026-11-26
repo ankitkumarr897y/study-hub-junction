@@ -1,10 +1,11 @@
-# Study Hub Junction — Vercel-ready Website Pack
+# Study Hub Junction — Vercel-ready Website Pack (v3 — PDF Upload Button)
 
-Ye ZIP rebuilt Study Hub Junction website ka hai — naya premium UI,
-client ka chuna hua Option 3 Junction logo, Hero Option 3 Minimal
-Growth visual, llms.txt, Open Graph, sitemap, robots aur Bing
-verification ke saath. Ye ek dusre client ki website hai (Apna School
-se alag).
+Ye ZIP current Study Hub Junction website ka fresh rebuild hai —
+naya premium UI, client ka chuna hua Option 3 Junction logo, Hero
+Option 3 Minimal Growth visual, AUR naya asli PDF upload button
+(admin material form me), llms.txt, Open Graph, sitemap, robots aur
+Bing verification ke saath. Ye ek dusre client ki website hai
+(Apna School se alag).
 
 ## ZIP ke andar kya hai
 
@@ -31,8 +32,9 @@ se alag).
 - `404.html` — galat / purane link ke liye not-found page.
 - `styles.css`, `app.js`, `config.js`, `materials.js` — index.html ke andar
   wale CSS/JS ki alag copies, sirf reference aur alag editing ke liye.
-  Inhe index.html me dobara link/load MAT karna — code pehle se index.html
-  ke andar chalta hai, dobara load karne se do baar chalega.
+  Inhe index.html me dobara link/load MAT karna — site self-contained hai,
+  code pehle se index.html ke andar chalta hai, dobara load karne se
+  do baar chalega.
 - `README.md` — ye file.
 
 ## Deploy kaise karein (GitHub + Vercel)
@@ -48,6 +50,32 @@ se alag).
    - Output / Install settings: default rehne do, koi install step nahi hai.
 4. Deploy hone ke baad site live ho jayegi. Koi `package.json`,
    server code ya `node_modules` is pack me nahi hai — ye 100% static hai.
+
+## PDF Upload — Admin se PDF kaise add karein (NAYA)
+
+Admin material form me ab asli **Upload PDF** button hai:
+
+1. Live site par `#/admin` kholo aur admin account se sign in karo
+   (Supabase sign-in zaroori hai).
+2. Add / Edit Material form me **Upload PDF** picker se apne device
+   se PDF choose karo — maximum size **25 MB**, sirf PDF file.
+3. PDF seedha **Supabase Storage** ke **"study-materials"** bucket me
+   upload hota hai. Form me **progress bar aur status** dikhta hai.
+4. Upload pura hote hi PDF ka public URL **file URL field me apne
+   aap bhar jata hai**. Phir baaki details (title, class, subject,
+   licence wagera) bhar ke material Save / Publish karo.
+5. **Paste-URL fallback bhi hai:** agar PDF kahin aur hosted hai to
+   uska direct HTTPS PDF link file URL field me paste karke bhi
+   save kar sakte ho — upload karna compulsory nahi hai.
+
+Dhyaan do:
+- PDF upload ke liye **admin sign-in (Supabase) zaroori hai** —
+  bina sign-in ke upload nahi hoga.
+- Upload **sirf live (deploy ki hui) site par** kaam karta hai.
+  **Tab-preview mode me upload nahi hota** — preview me kiye gaye
+  changes sirf usi tab me rehte hain, live nahi hote.
+- Licence (original / licensed / public_domain) chune bina material
+  publish nahi hota.
 
 ## Bing Webmaster Tools verification (client ko khud karna hai)
 
@@ -75,7 +103,7 @@ Ek hi option kaafi hai. Code paste karne ke baad Bing me "Verify" dabao.
 - Admin sign-in ke liye site owner ke apne Supabase admin account ki
   zaroorat hoti hai; bina uske admin login test nahi hoga.
 - PDF download/preview tabhi chalega jab kisi material ke saath PDF
-  attach hoga (admin se add kiya hua).
+  attach hoga (admin se upload / link kiya hua).
 - Logo badalna ho to admin panel se hota hai — wahan 5 choices safe
   hain: Junction (Option 3, abhi wala default), Option 1 Minimal,
   Option 2 Shield, pichla redesigned logo, aur purana original

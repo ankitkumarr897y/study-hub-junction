@@ -269,6 +269,17 @@ button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]
 .small-btn{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:700;cursor:pointer;min-height:36px}
 .small-btn:hover{border-color:var(--blue);color:var(--blue-deep)}
 .small-btn.danger:hover{border-color:#c0392b;color:#c0392b}
+.pdf-upload{border:1.5px dashed var(--line);border-radius:14px;background:var(--surface-2);padding:16px;display:grid;gap:10px}
+.pdf-upload-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pdf-upload-name{font-size:13.5px;color:var(--muted);word-break:break-all}
+.pdf-upload-name strong{color:var(--ink);font-weight:700}
+.pdf-progress{height:8px;border-radius:99px;background:var(--line-soft);overflow:hidden;display:none}
+.pdf-progress.on{display:block}
+.pdf-progress i{display:block;height:100%;width:0;background:var(--blue);border-radius:99px;transition:width .2s ease}
+.pdf-upload-status{font-size:13px;display:none}
+.pdf-upload-status.on{display:block}
+.pdf-upload-status.ok{color:var(--mint);font-weight:600}
+.pdf-upload-status.err{color:#c0392b;font-weight:600}
 .health-list{display:grid;gap:10px;margin-top:14px}
 .health-row{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid var(--line-soft);border-radius:13px;background:var(--surface-2)}
 .health-row .h-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;background:var(--surface);border:1px solid var(--line-soft)}

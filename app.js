@@ -108,6 +108,7 @@ var ICONS = {
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
   file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
   download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4m0 0 4 4m-4-4L8 8M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>',
   tg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m21 3-7.1 18-3.7-7.2L3 10.1 21 3Zm-10.8 10.8L21 3"/></svg>',
   megaphone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 13V9a2 2 0 0 1 2-2h2l9-4v16l-9-4H6a2 2 0 0 1-2-2Zm4-6v10m2 0 1.5 4H15l-2-5m8-8a4 4 0 0 1 0 8"/></svg>',
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>',
@@ -580,7 +581,14 @@ function materialForm(item){
     '<div class="field"><label for="m-year">Year</label><input id="m-year" name="year" placeholder="2025 or 2025-26" pattern="\\d{4}(-\\d{2})?" value="' + esc(item.year || "") + '"></div>' +
     '<div class="field"><label for="m-chapter">Chapter slug (class pages)</label><input id="m-chapter" name="chapter_slug" maxlength="80" placeholder="chapter-1" value="' + esc(item.chapter_slug || "") + '"></div>' +
     '<div class="field full"><label for="m-desc">Description *</label><textarea id="m-desc" name="description" required maxlength="2000">' + esc(item.description || "") + '</textarea></div>' +
-    '<div class="field full"><label for="m-url">PDF / file URL (HTTPS)</label><input id="m-url" name="file_url" type="url" placeholder="https://…" value="' + esc(item.file_url || "") + '"><span class="field-hint">On the live site, PDFs up to 25 MB upload to Supabase Storage (bucket “study-materials”). Here, paste a direct HTTPS PDF link.</span></div>' +
+    '<div class="field full"><label>PDF file</label><div class="pdf-upload">' +
+    '<div class="pdf-upload-row"><label class="btn btn-primary btn-sm" for="m-pdf-file" style="display:inline-flex;align-items:center;gap:7px;cursor:pointer">' + ICONS.upload + '<span>Upload PDF</span></label>' +
+    '<input id="m-pdf-file" type="file" accept="application/pdf,.pdf" hidden>' +
+    '<span class="pdf-upload-name" id="pdf-file-name">' + (item.file_url ? 'Current file: <strong>' + esc(String(item.file_url).split("/").pop() || "linked PDF") + '</strong> — choose a new PDF only to replace it.' : 'No file chosen yet. Pick a PDF from your device — it uploads straight to the site storage.') + '</span></div>' +
+    '<div class="pdf-progress" id="pdf-progress"><i></i></div>' +
+    '<p class="pdf-upload-status" id="pdf-upload-status" role="status"></p>' +
+    '<span class="field-hint">PDF only, up to 25 MB. The file goes to Supabase Storage (bucket “study-materials”) and its link fills in automatically below. Uploading needs the signed-in admin account.</span></div></div>' +
+    '<div class="field full"><label for="m-url">PDF / file URL (HTTPS)</label><input id="m-url" name="file_url" type="url" placeholder="https://…" value="' + esc(item.file_url || "") + '"><span class="field-hint">Filled in automatically after an upload — or paste a direct HTTPS PDF link instead.</span></div>' +
     '<div class="field full"><label for="m-tags">Tags (comma separated)</label><input id="m-tags" name="tags" placeholder="NEET, Biology, PYQ" value="' + esc((item.tags || []).join(", ")) + '"></div>' +
     '<div class="field full"><label for="m-license">Source / redistribution permission *</label><select id="m-license" name="license_status" required>' + licOpts + '</select></div>' +
     '<div class="field full"><label class="form-check"><input name="is_published" type="checkbox"' + (item.is_published ? " checked" : "") + '><span>Publish this material (requires a verified right to distribute)</span></label></div>' +
@@ -768,6 +776,138 @@ function checkAdminUser(){
     else { state.adminSession = null; state.adminError = "This account is not authorised as a site administrator."; }
   }).catch(function(){ state.adminSession = null; state.adminUser = null; });
 }
+/* ================= PDF upload (Supabase Storage, bucket from CONFIG) ================= */
+var MAX_PDF_BYTES = 25 * 1024 * 1024;
+var pdfSelectedFile = null;   /* File chosen in the material form, not yet uploaded */
+var pdfUploadedFor = null;    /* the File object pdfUploadedUrl belongs to */
+var pdfUploadedUrl = "";
+var pdfUploadBusy = false;
+function pdfStatus(kind, msg){
+  var el = $("#pdf-upload-status"); if(!el) return;
+  el.className = "pdf-upload-status on " + (kind || "");
+  el.textContent = msg || "";
+  if(!msg) el.className = "pdf-upload-status";
+}
+function pdfProgress(pct){
+  var wrap = $("#pdf-progress"); if(!wrap) return;
+  if(pct === null){ wrap.classList.remove("on"); return; }
+  wrap.classList.add("on");
+  var bar = wrap.querySelector("i"); if(bar) bar.style.width = Math.max(2, Math.min(100, pct)) + "%";
+}
+function formatBytes(n){
+  if(n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
+  if(n >= 1024) return Math.round(n / 1024) + " KB";
+  return n + " B";
+}
+function validatePdfFile(file){
+  if(!file) return "Choose a PDF file first.";
+  var isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  if(!isPdf) return "Only PDF files can be uploaded — “" + (file.name || "that file") + "” is not a PDF.";
+  if(file.size > MAX_PDF_BYTES) return "“" + file.name + "” is " + formatBytes(file.size) + " — the limit is 25 MB. Compress it and try again.";
+  if(!file.size) return "That file looks empty. Choose a different PDF.";
+  return "";
+}
+function uploadPdfToStorage(file){
+  var safeName = String(file.name || "material.pdf").toLowerCase().replace(/[^a-z0-9.\-]+/g, "-").replace(/^-+|-+$/g, "");
+  if(!/\.pdf$/.test(safeName)) safeName = (safeName || "material") + ".pdf";
+  var path = "materials/" + Date.now() + "-" + safeName;
+  var base = CONFIG.supabaseUrl.replace(/\/+$/, "");
+  var endpoint = base + "/storage/v1/object/" + CONFIG.storageBucket + "/" + path;
+  return new Promise(function(resolve, reject){
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", endpoint, true);
+    xhr.setRequestHeader("apikey", CONFIG.supabaseAnonKey);
+    xhr.setRequestHeader("Authorization", "Bearer " + state.adminSession.access_token);
+    xhr.setRequestHeader("Content-Type", "application/pdf");
+    xhr.setRequestHeader("x-upsert", "true");
+    xhr.setRequestHeader("cache-control", "3600");
+    xhr.upload.onprogress = function(e){
+      if(e.lengthComputable) pdfStatus("", "Uploading " + file.name + " — " + Math.round((e.loaded / e.total) * 100) + "%");
+      pdfProgress(e.lengthComputable ? (e.loaded / e.total) * 100 : 50);
+    };
+    xhr.onload = function(){
+      var data = null;
+      try{ data = JSON.parse(xhr.responseText || "null"); }catch(e){ data = null; }
+      if(xhr.status >= 200 && xhr.status < 300){
+        resolve(base + "/storage/v1/object/public/" + CONFIG.storageBucket + "/" + path);
+      } else {
+        reject(new Error((data && (data.message || data.error)) || ("Upload failed (HTTP " + xhr.status + ").")));
+      }
+    };
+    xhr.onerror = function(){ reject(new Error("Upload failed — check your connection and try again.")); };
+    xhr.send(file);
+  });
+}
+function ensurePdfUploaded(){
+  if(!pdfSelectedFile) return Promise.resolve("");
+  if(pdfUploadedFor === pdfSelectedFile && pdfUploadedUrl) return Promise.resolve(pdfUploadedUrl);
+  if(!state.adminUser || sessionPreview || !state.adminSession){
+    return Promise.reject(new Error("PDF upload needs the signed-in admin account. Sign in on this page first — the tab preview cannot upload files."));
+  }
+  var problem = validatePdfFile(pdfSelectedFile);
+  if(problem) return Promise.reject(new Error(problem));
+  pdfUploadBusy = true;
+  pdfProgress(0);
+  pdfStatus("", "Uploading " + pdfSelectedFile.name + "…");
+  return uploadPdfToStorage(pdfSelectedFile).then(function(url){
+    pdfUploadBusy = false;
+    pdfUploadedFor = pdfSelectedFile;
+    pdfUploadedUrl = url;
+    pdfProgress(100);
+    var urlInput = $("#m-url"); if(urlInput) urlInput.value = url;
+    pdfStatus("ok", "Uploaded ✓ " + pdfSelectedFile.name + " is in storage and its link is filled in below. Now save the material.");
+    setTimeout(function(){ pdfProgress(null); }, 600);
+    return url;
+  }).catch(function(err){
+    pdfUploadBusy = false;
+    pdfProgress(null);
+    pdfStatus("err", err.message);
+    throw err;
+  });
+}
+function bindPdfUpload(form){
+  var input = $("#m-pdf-file", form); if(!input) return;
+  pdfSelectedFile = null; pdfUploadedFor = null; pdfUploadedUrl = "";
+  input.addEventListener("change", function(){
+    var file = input.files && input.files[0];
+    pdfSelectedFile = null; pdfUploadedFor = null; pdfUploadedUrl = "";
+    var nameEl = $("#pdf-file-name");
+    if(!file){ pdfStatus("", ""); return; }
+    var problem = validatePdfFile(file);
+    if(problem){
+      pdfStatus("err", problem);
+      if(nameEl) nameEl.textContent = "No file chosen yet. Pick a PDF from your device — it uploads straight to the site storage.";
+      input.value = "";
+      return;
+    }
+    pdfSelectedFile = file;
+    if(nameEl) nameEl.innerHTML = "<strong>" + esc(file.name) + "</strong> · " + formatBytes(file.size) + " — ready. It uploads when you press the save button below, or tap Upload now.";
+    pdfStatus("", "");
+    var row = input.closest(".pdf-upload-row");
+    if(row && !row.querySelector("[data-pdf-upload-now]")){
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.className = "btn btn-outline btn-sm"; btn.setAttribute("data-pdf-upload-now", "");
+      btn.textContent = "Upload now";
+      btn.addEventListener("click", function(){
+        if(pdfUploadBusy) return;
+        btn.disabled = true; btn.textContent = "Uploading…";
+        ensurePdfUploaded().then(function(){ toast("PDF uploaded — link filled in."); })
+          .catch(function(err){ toast(err.message, true); })
+          .then(function(){ btn.disabled = false; btn.textContent = "Upload now"; });
+      });
+      row.appendChild(btn);
+    }
+  });
+  form.addEventListener("reset", function(){
+    setTimeout(function(){
+      pdfSelectedFile = null; pdfUploadedFor = null; pdfUploadedUrl = "";
+      pdfProgress(null); pdfStatus("", "");
+      var nameEl = $("#pdf-file-name");
+      if(nameEl) nameEl.textContent = "No file chosen yet. Pick a PDF from your device — it uploads straight to the site storage.";
+      var now = form.querySelector("[data-pdf-upload-now]"); if(now) now.remove();
+    }, 0);
+  });
+}
 function updateGeneratedPath(form){
   var v = new FormData(form);
   var label = form.querySelector("#generated-path");
@@ -846,12 +986,18 @@ function bindAdmin(){
   });
   var form = $("#material-form");
   if(form){
+    bindPdfUpload(form);
     form.addEventListener("input", function(){ updateGeneratedPath(form); });
     form.addEventListener("change", function(){ updateGeneratedPath(form); });
     form.addEventListener("submit", function(ev){
       ev.preventDefault();
-      var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = "Saving…";
-      Promise.resolve().then(function(){ return saveMaterialFromForm(form); }).then(function(){
+      if(pdfUploadBusy){ toast("PDF upload is still running — wait for it to finish, then save."); return; }
+      var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = pdfSelectedFile ? "Uploading PDF…" : "Saving…";
+      Promise.resolve().then(function(){ return ensurePdfUploaded(); }).then(function(){
+        btn.textContent = "Saving…";
+        return saveMaterialFromForm(form);
+      }).then(function(){
+        pdfSelectedFile = null; pdfUploadedFor = null; pdfUploadedUrl = "";
         toast("Material saved."); render();
       }).catch(function(err){ btn.disabled = false; btn.textContent = "Save material"; toast(err.message, true); });
     });
